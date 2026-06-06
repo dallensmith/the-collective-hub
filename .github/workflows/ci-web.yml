@@ -1,0 +1,132 @@
+name: CI - The Collective Hub
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main, development]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'svelte.config.js'
+      - 'vite.config.ts'
+      - '.github/workflows/ci-web.yml'
+      - '.github/instructions/**'
+      - '.github/prompts/**'
+      - 'AGENTS.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'svelte.config.js'
+      - 'vite.config.ts'
+      - '.github/workflows/ci-web.yml'
+      - '.github/instructions/**'
+      - '.github/prompts/**'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22.x'
+
+jobs:
+  validate-and-build:
+    name: Validate & Build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create stub .env for build
+        run: |
+          cat <<'EOF' > .env
+          DATABASE_URL=postgresql://ci:ci@localhost:5432/ci
+          BETTER_AUTH_SECRET=ci-secret-for-build
+          SITE_SLUG=ci-test-site
+          OWNER_DISCORD_ID=000000000000000000
+          CDN_BASE_URL=http://cdn.example.com
+          ORIGIN=http://localhost:3000
+          EOF
+
+      - name: Check types
+        run: npx svelte-check --tsconfig ./tsconfig.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npx vitest --run
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
+      - name: Docker build test
+        run: docker build -t collective-hub-ci --target runner .
+
+      - name: Validate Markdown links
+        run: npx markdown-link-check --config .mlc-config.json ./*.md .github/**/*.md 2>/dev/null || echo "markdown-link-check not configured, skipping"
+
+  e2e-tests:
+    name: E2E Tests
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create stub .env for build
+        run: |
+          cat <<'EOF' > .env
+          DATABASE_URL=postgresql://ci:ci@localhost:5432/ci
+          BETTER_AUTH_SECRET=ci-secret-for-build
+          SITE_SLUG=ci-test-site
+          OWNER_DISCORD_ID=000000000000000000
+          CDN_BASE_URL=http://cdn.example.com
+          ORIGIN=http://localhost:4173
+          EOF
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npx playwright test

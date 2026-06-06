@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'content/*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create a release for (e.g., content/v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag and version
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Resolved tag: $TAG"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG="${{ steps.resolve.outputs.tag }}"
+          PREV_TAG=$(git tag --list "content/*" --sort=-version:refname | grep -v "^${TAG}$" | head -1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating changelog from $PREV_TAG to $TAG"
+            CHANGELOG=$(git log "$PREV_TAG..$TAG" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Initial release")
+          else
+            echo "No previous tag found — using full log"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges 2>/dev/null | head -50 || echo "- Initial release")
+          fi
+          [ -z "$CHANGELOG" ] && CHANGELOG="- No changes logged"
+          DELIM=$(openssl rand -hex 8)
+          echo "changelog<<$DELIM" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG"        >> $GITHUB_OUTPUT
+          echo "$DELIM"            >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve.outputs.tag }}
+          name: ${{ steps.resolve.outputs.tag }}
+          body: |
+            ## The Collective Hub — ${{ steps.resolve.outputs.tag }}
+
+            ### What's Changed
+            ${{ steps.changelog.outputs.changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
