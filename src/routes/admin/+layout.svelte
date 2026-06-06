@@ -41,9 +41,9 @@
 		{ label: 'Dashboard', href: '/admin', placeholder: false },
 		{ label: 'Settings', href: '/admin/settings', placeholder: false },
 		{ label: 'Branding', href: '/admin/branding', placeholder: false },
-		{ label: 'Homepage', href: '/admin/homepage', placeholder: true },
-		{ label: 'Links', href: '/admin/links', placeholder: true },
-		{ label: 'Events', href: '/admin/events', placeholder: true },
+		{ label: 'Homepage', href: '/admin/homepage', placeholder: false },
+		{ label: 'Links', href: '/admin/links', placeholder: false },
+		{ label: 'Events', href: '/admin/events', placeholder: false },
 		{ label: 'Assets', href: '/admin/assets', placeholder: false },
 		{ label: 'Team', href: '/admin/team', placeholder: true }
 	];

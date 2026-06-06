@@ -135,6 +135,88 @@ export const assets = pgTable(
 	]
 );
 
+// ─── Nav Links ───────────────────────────────────────────────────────────────
+
+export const navLinks = pgTable(
+	'nav_links',
+	{
+		id: uuid('id').defaultRandom().primaryKey(),
+		siteId: uuid('site_id')
+			.notNull()
+			.references(() => sites.id, { onDelete: 'cascade' }),
+		label: text('label').notNull(),
+		url: text('url').notNull(),
+		position: text('position').notNull().default('header'),
+		sortOrder: integer('sort_order').notNull().default(0),
+		isExternal: boolean('is_external').notNull().default(true),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true })
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => new Date())
+	},
+	(table) => [
+		index('nav_links_site_position_order_idx').on(table.siteId, table.position, table.sortOrder)
+	]
+);
+
+// ─── Social Links ────────────────────────────────────────────────────────────
+
+export const socialLinks = pgTable(
+	'social_links',
+	{
+		id: uuid('id').defaultRandom().primaryKey(),
+		siteId: uuid('site_id')
+			.notNull()
+			.references(() => sites.id, { onDelete: 'cascade' }),
+		platform: text('platform').notNull(),
+		label: text('label'),
+		url: text('url').notNull(),
+		icon: text('icon'),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true })
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => new Date())
+	},
+	(table) => [
+		index('social_links_site_order_idx').on(table.siteId, table.sortOrder)
+	]
+);
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+
+export const events = pgTable(
+	'events',
+	{
+		id: uuid('id').defaultRandom().primaryKey(),
+		siteId: uuid('site_id')
+			.notNull()
+			.references(() => sites.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		description: text('description'),
+		eventType: text('event_type').notNull().default('screening'),
+		startTime: timestamp('start_time', { withTimezone: true }).notNull(),
+		endTime: timestamp('end_time', { withTimezone: true }),
+		timezone: text('timezone').notNull().default('America/New_York'),
+		location: text('location'),
+		externalLink: text('external_link'),
+		imageCdnKey: text('image_cdn_key'),
+		isPublished: boolean('is_published').notNull().default(false),
+		isRecurring: boolean('is_recurring').notNull().default(false),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true })
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => new Date())
+	},
+	(table) => [
+		index('events_site_start_idx').on(table.siteId, table.startTime),
+		index('events_site_published_idx').on(table.siteId, table.isPublished)
+	]
+);
+
 // ─── Type Exports ────────────────────────────────────────────────────────────
 
 export type Site = typeof sites.$inferSelect;
@@ -151,3 +233,12 @@ export type NewSiteSetting = typeof siteSettings.$inferInsert;
 
 export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
+
+export type NavLink = typeof navLinks.$inferSelect;
+export type NewNavLink = typeof navLinks.$inferInsert;
+
+export type SocialLink = typeof socialLinks.$inferSelect;
+export type NewSocialLink = typeof socialLinks.$inferInsert;
+
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
