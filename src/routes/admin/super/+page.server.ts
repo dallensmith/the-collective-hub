@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { sites, siteSettings, events, assets, navLinks, socialLinks, memberships, users } from '$lib/server/db/schema';
-import { eq, desc, count, asc } from 'drizzle-orm';
+import { eq, desc, count, asc, ilike, or, inArray } from 'drizzle-orm';
 import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCdnUrl } from '$lib/server/cdn';
@@ -25,11 +25,21 @@ export const load: PageServerLoad = async (event) => {
 		throw error(403, 'Only super admins can access this page.');
 	}
 
-	// Query all sites, newest first (no siteId filter — cross-site view)
-	const allSites = await db
-		.select()
-		.from(sites)
-		.orderBy(desc(sites.createdAt));
+	// Read optional search query param for cross-site filtering
+	const search = event.url.searchParams.get('search')?.trim() ?? '';
+
+	// Query sites, optionally filtered by name/slug search
+	const baseQuery = db.select().from(sites);
+	const filteredQuery = search
+		? baseQuery.where(
+				or(
+					ilike(sites.name, `%${search}%`),
+					ilike(sites.slug, `%${search}%`)
+				)
+			)
+		: baseQuery;
+
+	const allSites = await filteredQuery.orderBy(desc(sites.createdAt));
 
 	// For each site, fetch counts and settings presence
 	const sitesWithStats = await Promise.all(
@@ -65,7 +75,8 @@ export const load: PageServerLoad = async (event) => {
 	);
 
 	return {
-		sites: sitesWithStats
+		sites: sitesWithStats,
+		search
 	};
 };
 
@@ -387,5 +398,161 @@ export const actions: Actions = {
 			const message = err instanceof Error ? err.message : 'Failed to save feature flags.';
 			return { success: false, error: message, action: 'saveFeatureFlags' };
 		}
-	}
-};
+	},
+
+	/**
+		* Clone an existing site's settings into a new site.
+		* Accepts form data: sourceSiteId (uuid), name (string), slug (string).
+		*
+		* Validation follows the same rules as createSite:
+		* - name is required
+		* - slug is required and must match /^[a-z0-9-]+$/
+		* - slug must be unique
+		*
+		* Clones the published settings JSON from the source site and updates
+		* branding.siteName to the new site name. Does NOT copy draftSettings.
+		*/
+	cloneSite: async (event) => {
+		if (!event.locals.isSuperAdmin) {
+			throw error(403, 'Only super admins can perform this action.');
+		}
+
+		const formData = await event.request.formData();
+		const sourceSiteId = formData.get('sourceSiteId')?.toString();
+		const name = formData.get('name')?.toString().trim();
+		const slug = formData.get('slug')?.toString().trim();
+
+		// --- Validation ---
+
+		if (!sourceSiteId) {
+			return { success: false, error: 'Source site ID is required.', action: 'cloneSite', field: 'sourceSiteId' };
+		}
+
+		if (!name) {
+			return { success: false, error: 'Site name is required.', action: 'cloneSite', field: 'name' };
+		}
+
+		if (!slug) {
+			return { success: false, error: 'Site slug is required.', action: 'cloneSite', field: 'slug' };
+		}
+
+		// Slug must be lowercase alphanumeric with hyphens only
+		if (!/^[a-z0-9-]+$/.test(slug)) {
+			return {
+				success: false,
+				error: 'Slug must contain only lowercase letters, numbers, and hyphens.',
+				action: 'cloneSite',
+				field: 'slug'
+			};
+		}
+
+		// Slug must be unique
+		const [existing] = await db
+			.select({ id: sites.id })
+			.from(sites)
+			.where(eq(sites.slug, slug))
+			.limit(1);
+
+		if (existing) {
+			return {
+				success: false,
+				error: `A site with slug "${slug}" already exists. Choose a different slug.`,
+				action: 'cloneSite',
+				field: 'slug'
+			};
+		}
+
+		// --- Read source site settings ---
+
+		const [sourceRow] = await db
+			.select({ settings: siteSettings.settings })
+			.from(siteSettings)
+			.where(eq(siteSettings.siteId, sourceSiteId))
+			.limit(1);
+
+		if (!sourceRow) {
+			return { success: false, error: 'Source site has no settings to clone.', action: 'cloneSite' };
+		}
+
+		// Clone settings and update branding.siteName
+		const clonedSettings = { ...(sourceRow.settings as Record<string, unknown>) };
+
+		if (clonedSettings.branding && typeof clonedSettings.branding === 'object') {
+			clonedSettings.branding = {
+				...(clonedSettings.branding as Record<string, unknown>),
+				siteName: name
+			};
+		} else {
+			clonedSettings.branding = { siteName: name };
+		}
+
+		// --- Insert site + settings in a transaction ---
+
+		try {
+			const [newSite] = await db
+				.insert(sites)
+				.values({ name, slug })
+				.returning({ id: sites.id });
+
+			if (!newSite) {
+				return { success: false, error: 'Failed to create site.', action: 'cloneSite' };
+			}
+
+			await db.insert(siteSettings).values({
+				siteId: newSite.id,
+				settings: clonedSettings
+			});
+
+			return { success: true, action: 'cloneSite', siteId: newSite.id };
+		} catch (err) {
+				const message = err instanceof Error ? err.message : 'Failed to clone site.';
+				return { success: false, error: message, action: 'cloneSite' };
+			}
+		},
+	
+		/**
+		 * Bulk toggle isActive for multiple sites.
+		 * Accepts form data: siteIds (comma-separated uuid strings), isActive ('true' | 'false').
+		 * Uses a single UPDATE … WHERE id IN (…) query for efficiency.
+		 */
+		bulkToggleActive: async (event) => {
+			if (!event.locals.isSuperAdmin) {
+				throw error(403, 'Only super admins can perform this action.');
+			}
+	
+			const formData = await event.request.formData();
+			const siteIdsRaw = formData.get('siteIds')?.toString();
+			const isActiveRaw = formData.get('isActive')?.toString();
+	
+			if (!siteIdsRaw) {
+				return { success: false, error: 'No sites selected.', action: 'bulkToggleActive' };
+			}
+	
+			if (!isActiveRaw || (isActiveRaw !== 'true' && isActiveRaw !== 'false')) {
+				return { success: false, error: 'Invalid active state.', action: 'bulkToggleActive' };
+			}
+	
+			const ids = siteIdsRaw
+				.split(',')
+				.map((id) => id.trim())
+				.filter(Boolean);
+	
+			if (ids.length === 0) {
+				return { success: false, error: 'No valid site IDs provided.', action: 'bulkToggleActive' };
+			}
+	
+			const isActive = isActiveRaw === 'true';
+	
+			try {
+				await db
+					.update(sites)
+					.set({ isActive, updatedAt: new Date() })
+					.where(inArray(sites.id, ids));
+	
+				return { success: true, action: 'bulkToggleActive', count: ids.length };
+			} catch (err) {
+				const message = err instanceof Error ? err.message : 'Failed to update sites.';
+				return { success: false, error: message, action: 'bulkToggleActive' };
+			}
+		}
+	};

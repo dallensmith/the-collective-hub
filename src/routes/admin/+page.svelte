@@ -17,6 +17,7 @@
 	/** Stats from the page server load */
 	let stats = $derived(data.stats ?? {
 		totalEvents: 0,
+		publishedEvents: 0,
 		upcomingEvents: 0,
 		totalAssets: 0,
 		totalNavLinks: 0,
@@ -30,6 +31,24 @@
 	let username = $derived(data.user?.discordUsername ?? 'there');
 	let currentRole = $derived(data.currentUserRole ?? data.membership?.role ?? null);
 	let isActive = $derived(data.isActive ?? true);
+
+	/**
+	 * Feature flags from the page server (also available via layout data).
+	 * Undefined flags default to enabled for backward compatibility.
+	 */
+	let featureFlags = $derived(
+		(data.featureFlags as Record<string, boolean> | undefined) ??
+		(data as Record<string, unknown>).featureFlags as Record<string, boolean> | undefined ??
+		{}
+	);
+
+	/** Whether a given feature is enabled (undefined = enabled for backward compat) */
+	function flag(key: string): boolean {
+		return featureFlags[key] !== false;
+	}
+
+	/** Total links (nav + social) */
+	let totalLinks = $derived(stats.totalNavLinks + stats.totalSocialLinks);
 </script>
 
 <svelte:head>
@@ -82,7 +101,7 @@
 					<span class="stat-number">{stats.totalEvents}</span>
 					<span class="stat-label">Events</span>
 					<span class="stat-detail">
-						{stats.totalEvents} total{stats.upcomingEvents > 0 ? `, ${stats.upcomingEvents} upcoming` : ''}
+						{stats.totalEvents} total{stats.publishedEvents > 0 ? `, ${stats.publishedEvents} published` : ''}{stats.upcomingEvents > 0 ? `, ${stats.upcomingEvents} upcoming` : ''}
 					</span>
 				</div>
 			</div>
@@ -101,7 +120,7 @@
 			<div class="stat-card">
 				<span class="stat-icon">🔗</span>
 				<div class="stat-body">
-					<span class="stat-number">{stats.totalNavLinks + stats.totalSocialLinks}</span>
+					<span class="stat-number">{totalLinks}</span>
 					<span class="stat-label">Links</span>
 					<span class="stat-detail">
 						{stats.totalNavLinks} nav + {stats.totalSocialLinks} social
@@ -143,31 +162,41 @@
 	<div class="actions-section">
 		<h3 class="section-title">Quick Actions</h3>
 		<div class="actions-grid">
-			<a href="/admin/homepage" class="action-card">
-				<span class="action-icon">🏠</span>
-				<span class="action-label">Edit Homepage</span>
-				<span class="action-desc">Customize your hero section and content</span>
-			</a>
-			<a href="/admin/events" class="action-card">
-				<span class="action-icon">📅</span>
-				<span class="action-label">Manage Events</span>
-				<span class="action-desc">Create and schedule upcoming events</span>
-			</a>
-			<a href="/admin/assets" class="action-card">
-				<span class="action-icon">📁</span>
-				<span class="action-label">Upload Assets</span>
-				<span class="action-desc">Upload images, files, and media</span>
-			</a>
-			<a href="/admin/branding" class="action-card">
-				<span class="action-icon">🎨</span>
-				<span class="action-label">Customize Branding</span>
-				<span class="action-desc">Set your logo, colors, and theme</span>
-			</a>
-			<a href="/admin/links" class="action-card">
-				<span class="action-icon">🔗</span>
-				<span class="action-label">Manage Links</span>
-				<span class="action-desc">Edit navigation and social links</span>
-			</a>
+			{#if flag('homepageEditor')}
+				<a href="/admin/homepage" class="action-card">
+					<span class="action-icon">🏠</span>
+					<span class="action-label">Edit Homepage</span>
+					<span class="action-desc">Customize your hero section and content</span>
+				</a>
+			{/if}
+			{#if flag('events')}
+				<a href="/admin/events" class="action-card">
+					<span class="action-icon">📅</span>
+					<span class="action-label">Manage Events</span>
+					<span class="action-desc">Create and schedule upcoming events</span>
+				</a>
+			{/if}
+			{#if flag('assetLibrary')}
+				<a href="/admin/assets" class="action-card">
+					<span class="action-icon">📁</span>
+					<span class="action-label">Upload Assets</span>
+					<span class="action-desc">Upload images, files, and media</span>
+				</a>
+			{/if}
+			{#if flag('branding')}
+				<a href="/admin/branding" class="action-card">
+					<span class="action-icon">🎨</span>
+					<span class="action-label">Customize Branding</span>
+					<span class="action-desc">Set your logo, colors, and theme</span>
+				</a>
+			{/if}
+			{#if flag('navLinks') || flag('socialLinks')}
+				<a href="/admin/links" class="action-card">
+					<span class="action-icon">🔗</span>
+					<span class="action-label">Manage Links</span>
+					<span class="action-desc">Edit navigation and social links</span>
+				</a>
+			{/if}
 			<a href="/admin/team" class="action-card">
 				<span class="action-icon">👥</span>
 				<span class="action-label">Manage Team</span>

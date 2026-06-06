@@ -17,6 +17,18 @@
 	let detailsLoading = $state(false);
 	let flagSaving = $state(false);
 
+	// ─── Clone state ───────────────────────────────────────────────
+	/** Source site ID when cloning; null means fresh create */
+	let cloneSourceId = $state<string | null>(null);
+	/** Source site name used to pre-fill the create form */
+	let cloneSourceName = $state<string>('');
+
+	// ─── Bulk selection state ──────────────────────────────────────
+	/** Set of selected site IDs for bulk operations */
+	let selectedIds = $state<Set<string>>(new Set());
+	/** Whether a bulk action is being submitted */
+	let bulkSaving = $state(false);
+
 	// Watch for form action results and update feedback
 	$effect(() => {
 		if (form) {
@@ -31,6 +43,17 @@
 						message: 'Site created successfully. Remember to configure the Coolify environment variables.'
 					};
 					showCreateForm = false;
+					cloneSourceId = null;
+					cloneSourceName = '';
+					window.location.reload();
+				} else if (form.action === 'cloneSite') {
+					feedback = {
+						type: 'success',
+						message: 'Site cloned successfully. Remember to configure the Coolify environment variables.'
+					};
+					showCreateForm = false;
+					cloneSourceId = null;
+					cloneSourceName = '';
 					window.location.reload();
 				} else if (form.action === 'toggleActive') {
 					feedback = { type: 'success', message: 'Site status toggled.' };
@@ -42,6 +65,11 @@
 					}
 				} else if (form.action === 'saveFeatureFlags') {
 					feedback = { type: 'success', message: 'Feature flags saved.' };
+				} else if (form.action === 'bulkToggleActive') {
+					const raw = form as Record<string, unknown>;
+					feedback = { type: 'success', message: `Updated ${raw.count ?? '?'} site(s).` };
+					selectedIds = new Set();
+					window.location.reload();
 				} else {
 					feedback = { type: 'success', message: 'Action completed.' };
 				}
@@ -109,6 +137,28 @@
 		selectedSiteId = null;
 		siteDetails = null;
 	}
+
+	// ─── Bulk selection helpers ────────────────────────────────────
+
+	/** Toggle all visible sites on/off */
+	function toggleSelectAll() {
+		if (selectedIds.size === data.sites.length) {
+			selectedIds = new Set();
+		} else {
+			selectedIds = new Set(data.sites.map((s) => s.id));
+		}
+	}
+
+	/** Toggle a single site ID in/out of the selection set */
+	function toggleSite(id: string) {
+		const next = new Set(selectedIds);
+		if (next.has(id)) {
+			next.delete(id);
+		} else {
+			next.add(id);
+		}
+		selectedIds = next;
+	}
 </script>
 
 <svelte:head>
@@ -155,13 +205,19 @@
 			<div class="create-card-body">
 				<form
 					method="POST"
-					action="?/createSite"
+					action={cloneSourceId ? '?/cloneSite' : '?/createSite'}
 					use:enhance={() => {
 						saving = true;
 						feedback = null;
 					}}
 				>
 					<fieldset disabled={saving}>
+						{#if cloneSourceId}
+							<input type="hidden" name="sourceSiteId" value={cloneSourceId} />
+							<div class="clone-banner">
+								\uD83D\uDCCB Cloning from <strong>{cloneSourceName}</strong>. Settings will be copied to the new site.
+							</div>
+						{/if}
 						<div class="form-row">
 							<div class="form-group">
 								<label for="siteName" class="form-label">
@@ -175,6 +231,7 @@
 									required
 									maxlength={100}
 									placeholder="My Collective Site"
+									value={cloneSourceName ? `${cloneSourceName} (Clone)` : ''}
 								/>
 								<p class="form-help">The display name for this site (e.g. "The Collective Hub").</p>
 							</div>
@@ -207,7 +264,9 @@
 							<button type="submit" class="create-btn" disabled={saving}>
 								{#if saving}
 									<span class="spinner"></span>
-									Creating\u2026
+									{cloneSourceId ? 'Cloning\u2026' : 'Creating\u2026'}
+								{:else if cloneSourceId}
+									Clone Site
 								{:else}
 									Create Site
 								{/if}
@@ -215,7 +274,11 @@
 							<button
 								type="button"
 								class="cancel-btn"
-								onclick={() => (showCreateForm = false)}
+								onclick={() => {
+									showCreateForm = false;
+									cloneSourceId = null;
+									cloneSourceName = '';
+								}}
 								disabled={saving}
 							>
 								Cancel
@@ -285,6 +348,23 @@
 			<span class="section-count">{data.sites.length}</span>
 		</h2>
 
+		<!-- Cross-Site Search -->
+		<form method="GET" action="." class="search-form">
+			<div class="search-input-wrapper">
+				<span class="search-icon" aria-hidden="true">🔍</span>
+				<input
+					type="text"
+					name="search"
+					class="search-input"
+					placeholder="Search by site name or slug..."
+					value={data.search ?? ''}
+				/>
+				{#if data.search}
+					<a href="." class="search-clear" aria-label="Clear search">&times;</a>
+				{/if}
+			</div>
+		</form>
+
 		{#if data.sites.length === 0}
 			<div class="empty-state">
 				<p class="empty-icon">\uD83D\uDCED</p>
@@ -295,6 +375,15 @@
 				<table class="sites-table">
 					<thead>
 						<tr>
+							<th class="col-check">
+								<input
+									type="checkbox"
+									class="row-checkbox"
+									checked={selectedIds.size === data.sites.length && data.sites.length > 0}
+									onchange={toggleSelectAll}
+									aria-label="Select all sites"
+								/>
+							</th>
 							<th>Site Name</th>
 							<th>Slug</th>
 							<th>Status</th>
@@ -308,6 +397,15 @@
 					<tbody>
 						{#each data.sites as site}
 							<tr class:site-inactive={!site.isActive} class:site-selected={selectedSiteId === site.id}>
+								<td class="col-check">
+									<input
+										type="checkbox"
+										class="row-checkbox"
+										checked={selectedIds.has(site.id)}
+										onchange={() => toggleSite(site.id)}
+										aria-label="Select {site.name}"
+									/>
+								</td>
 								<td class="col-name">
 									<span class="site-name">{site.name}</span>
 								</td>
@@ -377,6 +475,21 @@
 												{/if}
 											</button>
 										</form>
+
+										<button
+											type="button"
+											class="clone-btn"
+											title="Clone this site's settings"
+											onclick={() => {
+												cloneSourceId = site.id;
+												cloneSourceName = site.name;
+												showCreateForm = true;
+												// Scroll to the create form
+												document.querySelector('.create-card')?.scrollIntoView({ behavior: 'smooth' });
+											}}
+										>
+											\uD83D\uDCCB Clone
+										</button>
 									</div>
 								</td>
 							</tr>
@@ -773,6 +886,53 @@
 							<p class="drilldown-empty">No members found.</p>
 						{/if}
 					</section>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Bulk Action Bar -->
+		{#if selectedIds.size > 0}
+			<div class="bulk-bar">
+				<div class="bulk-bar-status">
+					<span class="bulk-indicator">{selectedIds.size} site{selectedIds.size === 1 ? '' : 's'} selected</span>
+				</div>
+				<div class="bulk-bar-actions">
+					<form
+						method="POST"
+						action="?/bulkToggleActive"
+						use:enhance={() => {
+							bulkSaving = true;
+							feedback = null;
+						}}
+						class="bulk-form"
+					>
+						<input type="hidden" name="siteIds" value={[...selectedIds].join(',')} />
+						<input type="hidden" name="isActive" value="true" />
+						<button type="submit" class="bulk-btn bulk-btn--activate" disabled={bulkSaving}>
+							{#if bulkSaving}
+								<span class="spinner spinner--small"></span>
+							{/if}
+							Activate Selected
+						</button>
+					</form>
+					<form
+						method="POST"
+						action="?/bulkToggleActive"
+						use:enhance={() => {
+							bulkSaving = true;
+							feedback = null;
+						}}
+						class="bulk-form"
+					>
+						<input type="hidden" name="siteIds" value={[...selectedIds].join(',')} />
+						<input type="hidden" name="isActive" value="false" />
+						<button type="submit" class="bulk-btn bulk-btn--deactivate" disabled={bulkSaving}>
+							{#if bulkSaving}
+								<span class="spinner spinner--small"></span>
+							{/if}
+							Deactivate Selected
+						</button>
+					</form>
 				</div>
 			</div>
 		{/if}
@@ -1349,6 +1509,40 @@
 		cursor: not-allowed;
 	}
 
+	/* Clone Button */
+	.clone-btn {
+		padding: 0.35rem 0.75rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		border-radius: 5px;
+		border: 1px solid #a78bfa;
+		background: #f5f3ff;
+		color: #6d28d9;
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+		white-space: nowrap;
+	}
+
+	.clone-btn:hover {
+		background: #ede9fe;
+		color: #5b21b6;
+	}
+
+	/* Clone Banner (shown inside create form when cloning) */
+	.clone-banner {
+		padding: 0.6rem 0.75rem;
+		background: #f5f3ff;
+		border: 1px solid #ddd6fe;
+		border-radius: 6px;
+		font-size: 0.825rem;
+		color: #4c1d95;
+		margin-bottom: 1rem;
+	}
+
+	.clone-banner strong {
+		font-weight: 700;
+	}
+
 	/* Drill-Down Panel */
 	.drilldown-panel {
 		background: #fff;
@@ -1695,6 +1889,150 @@
 	.role-editor {
 		background: #e8e8ed;
 		color: #555;
+	}
+
+	/* ── Search Form ────────────────────────────────────────────── */
+	.search-form {
+		margin-bottom: 1rem;
+	}
+
+	.search-input-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.search-icon {
+		position: absolute;
+		left: 0.75rem;
+		font-size: 0.9rem;
+		color: #999;
+		pointer-events: none;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 0.55rem 2.5rem 0.55rem 2.25rem;
+		font-size: 0.875rem;
+		border: 1px solid #d0d0d6;
+		border-radius: 6px;
+		background: #fff;
+		color: #1a1a2e;
+		transition: border-color 0.15s, box-shadow 0.15s;
+		box-sizing: border-box;
+	}
+
+	.search-input:focus {
+		outline: none;
+		border-color: #58a6ff;
+		box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+	}
+
+	.search-input::placeholder {
+		color: #aaa;
+	}
+
+	.search-clear {
+		position: absolute;
+		right: 0.5rem;
+		font-size: 1.25rem;
+		color: #999;
+		text-decoration: none;
+		line-height: 1;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		transition: color 0.15s, background 0.15s;
+	}
+
+	.search-clear:hover {
+		color: #e5534b;
+		background: #fde8e8;
+	}
+
+	/* ── Checkbox Column ────────────────────────────────────────── */
+	.col-check {
+		width: 40px;
+		text-align: center;
+		padding-left: 0.75rem !important;
+		padding-right: 0.25rem !important;
+	}
+
+	.row-checkbox {
+		width: 16px;
+		height: 16px;
+		cursor: pointer;
+		accent-color: #58a6ff;
+		margin: 0;
+	}
+
+	/* ── Bulk Action Bar ────────────────────────────────────────── */
+	.bulk-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.6rem 1rem;
+		background: #fff8e1;
+		border: 1px solid #ffe082;
+		border-radius: 6px;
+		margin-top: 1rem;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.bulk-bar-status {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.bulk-indicator {
+		color: #e65100;
+	}
+
+	.bulk-bar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.bulk-form {
+		display: inline;
+	}
+
+	.bulk-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		border-radius: 5px;
+		border: none;
+		cursor: pointer;
+		transition: background 0.15s, opacity 0.15s;
+		white-space: nowrap;
+	}
+
+	.bulk-btn:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+	}
+
+	.bulk-btn--activate {
+		background: #1a7f37;
+		color: #fff;
+	}
+
+	.bulk-btn--activate:hover:not(:disabled) {
+		background: #14682c;
+	}
+
+	.bulk-btn--deactivate {
+		background: #b42318;
+		color: #fff;
+	}
+
+	.bulk-btn--deactivate:hover:not(:disabled) {
+		background: #9b1c1c;
 	}
 
 	/* Admin Note */

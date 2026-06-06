@@ -9,12 +9,13 @@ import type { PageServerLoad } from './$types';
  * All stats are scoped to the current site.
  */
 export const load: PageServerLoad = async (event) => {
-	const { site, membership, isSuperAdmin } = event.locals;
+	const { site, membership, siteSettings: currentSiteSettings, isSuperAdmin } = event.locals;
 
 	if (!site) {
 		return {
 			stats: {
 				totalEvents: 0,
+				publishedEvents: 0,
 				upcomingEvents: 0,
 				totalAssets: 0,
 				totalNavLinks: 0,
@@ -24,6 +25,7 @@ export const load: PageServerLoad = async (event) => {
 			},
 			siteUrl: env.PUBLIC_SITE_URL ?? null,
 			isActive: false,
+			featureFlags: {},
 			currentUserRole: null,
 			isSuperAdmin: false
 		};
@@ -34,6 +36,7 @@ export const load: PageServerLoad = async (event) => {
 	// Run all count queries in parallel
 	const [
 		[{ value: totalEvents }],
+		[{ value: publishedEvents }],
 		[{ value: upcomingEvents }],
 		[{ value: totalAssets }],
 		[{ value: totalNavLinks }],
@@ -41,10 +44,17 @@ export const load: PageServerLoad = async (event) => {
 		[{ value: totalMembers }],
 		[settingsRow]
 	] = await Promise.all([
+		// All events (regardless of published status)
+		db
+			.select({ value: count() })
+			.from(events)
+			.where(eq(events.siteId, site.id)),
+		// Published events only
 		db
 			.select({ value: count() })
 			.from(events)
 			.where(and(eq(events.siteId, site.id), eq(events.isPublished, true))),
+		// Published + upcoming events
 		db
 			.select({ value: count() })
 			.from(events)
@@ -78,9 +88,13 @@ export const load: PageServerLoad = async (event) => {
 			.limit(1)
 	]);
 
+	// Extract feature flags from site settings (default: all enabled if not configured)
+	const featureFlags = (currentSiteSettings?.featureFlags as Record<string, boolean> | undefined) ?? {};
+
 	return {
 		stats: {
 			totalEvents,
+			publishedEvents,
 			upcomingEvents,
 			totalAssets,
 			totalNavLinks,
@@ -90,6 +104,7 @@ export const load: PageServerLoad = async (event) => {
 		},
 		siteUrl: env.PUBLIC_SITE_URL ?? null,
 		isActive: site.isActive,
+		featureFlags,
 		currentUserRole: membership?.role ?? null,
 		isSuperAdmin
 	};
