@@ -4,19 +4,48 @@ import { randomUUID } from 'crypto';
 
 // ─── Bunny CDN Configuration ─────────────────────────────────────────────────
 
-function getConfig() {
+interface CdnConfig {
+	baseUrl: string;
+	storageEndpoint: string;
+	accessKey: string;
+	bucket: string;
+}
+
+/**
+ * Resolve CDN configuration from environment variables.
+ * Returns null if any required variable is missing — does NOT throw at import time.
+ */
+function getConfig(): CdnConfig | null {
 	const baseUrl = env.CDN_BASE_URL;
 	const storageEndpoint = env.CDN_STORAGE_ENDPOINT;
 	const accessKey = env.CDN_ACCESS_KEY;
 	const bucket = env.CDN_BUCKET;
 
 	if (!baseUrl || !storageEndpoint || !accessKey || !bucket) {
-		throw new Error(
-			'CDN is not configured. Set CDN_BASE_URL, CDN_STORAGE_ENDPOINT, CDN_ACCESS_KEY, and CDN_BUCKET in your .env file.'
-		);
+		return null;
 	}
 
 	return { baseUrl, storageEndpoint, accessKey, bucket };
+}
+
+/**
+ * Require CDN configuration or throw with a descriptive message.
+ * Used by mutation operations (upload, delete) where CDN is mandatory.
+ */
+function requireConfig(): CdnConfig {
+	const config = getConfig();
+	if (!config) {
+		const missing: string[] = [];
+		if (!env.CDN_BASE_URL) missing.push('CDN_BASE_URL');
+		if (!env.CDN_STORAGE_ENDPOINT) missing.push('CDN_STORAGE_ENDPOINT');
+		if (!env.CDN_ACCESS_KEY) missing.push('CDN_ACCESS_KEY');
+		if (!env.CDN_BUCKET) missing.push('CDN_BUCKET');
+		throw new Error(
+			`CDN is not configured. Missing environment variables: ${missing.join(', ')}. ` +
+			'Set them in your .env file or disable CDN-dependent features.'
+		);
+	}
+	return config;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,10 +74,12 @@ export function generateCdnKey(siteSlug: string, type: string): string {
 
 /**
  * Build the public CDN URL for a stored file.
+ * Returns an empty string if CDN is not configured.
  */
 export function getCdnUrl(cdnKey: string): string {
-	const { baseUrl } = getConfig();
-	const normalizedBase = baseUrl.replace(/\/+$/, '');
+	const config = getConfig();
+	if (!config) return '';
+	const normalizedBase = config.baseUrl.replace(/\/+$/, '');
 	const normalizedKey = cdnKey.replace(/^\/+/, '');
 	return `${normalizedBase}/${normalizedKey}`;
 }
@@ -105,7 +136,7 @@ export async function uploadToCdn(
 	type: string,
 	originalMimeType: string
 ): Promise<CdnUploadResult> {
-	const { storageEndpoint, accessKey, bucket } = getConfig();
+	const { storageEndpoint, accessKey, bucket } = requireConfig();
 
 	// Convert to webp
 	const { webpBuffer, width, height } = await convertToWebP(buffer, originalMimeType);
@@ -148,7 +179,7 @@ export async function uploadToCdn(
  * Delete a file from Bunny CDN storage.
  */
 export async function deleteFromCdn(cdnKey: string): Promise<void> {
-	const { storageEndpoint, accessKey, bucket } = getConfig();
+	const { storageEndpoint, accessKey, bucket } = requireConfig();
 
 	const normalizedEndpoint = storageEndpoint.replace(/\/+$/, '');
 	const normalizedBucket = bucket.replace(/^\/+/, '');
@@ -175,7 +206,9 @@ export async function deleteFromCdn(cdnKey: string): Promise<void> {
  */
 export async function checkCdnConnectivity(): Promise<boolean> {
 	try {
-		const { storageEndpoint, accessKey } = getConfig();
+		const config = getConfig();
+		if (!config) return false;
+		const { storageEndpoint, accessKey } = config;
 		// Simple HEAD or GET to the storage root to verify credentials
 		const response = await fetch(storageEndpoint.replace(/\/+$/, ''), {
 			method: 'GET',

@@ -44,30 +44,39 @@ export const load: PageServerLoad = async (event) => {
 	const backgroundUrl = branding?.backgroundCdnKey ? getCdnUrl(branding.backgroundCdnKey) : null;
 	const faviconUrl = branding?.faviconCdnKey ? getCdnUrl(branding.faviconCdnKey) : null;
 
-	// Query nav links and social links for the current site
+	// ─── Feature flags ──────────────────────────────────────────────────
+	const featureFlags = siteSettings?.featureFlags;
+
+	// Query nav links and social links for the current site (respect feature flags)
 	let navLinkRows: typeof navLinks.$inferSelect[] = [];
 	let socialLinkRows: typeof socialLinks.$inferSelect[] = [];
 
 	if (site) {
-		navLinkRows = await db
-			.select()
-			.from(navLinks)
-			.where(eq(navLinks.siteId, site.id))
-			.orderBy(asc(navLinks.position), asc(navLinks.sortOrder));
+		// Only load nav links if the feature flag is not explicitly disabled
+		if (featureFlags?.navLinks !== false) {
+			navLinkRows = await db
+				.select()
+				.from(navLinks)
+				.where(eq(navLinks.siteId, site.id))
+				.orderBy(asc(navLinks.position), asc(navLinks.sortOrder));
+		}
 
-		socialLinkRows = await db
-			.select()
-			.from(socialLinks)
-			.where(eq(socialLinks.siteId, site.id))
-			.orderBy(asc(socialLinks.sortOrder));
+		// Only load social links if the feature flag is not explicitly disabled
+		if (featureFlags?.socialLinks !== false) {
+			socialLinkRows = await db
+				.select()
+				.from(socialLinks)
+				.where(eq(socialLinks.siteId, site.id))
+				.orderBy(asc(socialLinks.sortOrder));
+		}
 	}
 
-	// ─── Events queries ──────────────────────────────────────────────────
+	// ─── Events queries (respect feature flags) ─────────────────────────
 
 	let nextEvent: typeof events.$inferSelect | null = null;
 	let upcomingEvents: typeof events.$inferSelect[] = [];
 
-	if (site) {
+	if (site && featureFlags?.events !== false) {
 		const now = new Date();
 
 		// Next upcoming published event

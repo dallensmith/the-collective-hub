@@ -38,6 +38,9 @@ export const load: LayoutServerLoad = async (event) => {
 		? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.discordAvatar}.png`
 		: `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discordId) >> 22) % 6}.png`;
 
+	// Extract feature flags from site settings (default: all enabled if not configured)
+	const featureFlags = event.locals.siteSettings?.featureFlags ?? {};
+
 	// Super admins bypass all membership/role checks — grant immediate access
 	if (isSuperAdmin) {
 		return {
@@ -47,7 +50,8 @@ export const load: LayoutServerLoad = async (event) => {
 			},
 			membership: null,
 			site,
-			isSuperAdmin: true
+			isSuperAdmin: true,
+			featureFlags
 		};
 	}
 
@@ -76,6 +80,7 @@ export const load: LayoutServerLoad = async (event) => {
 		},
 		membership,
 		site,
-		isSuperAdmin: false
+		isSuperAdmin: false,
+		featureFlags
 	};
 };

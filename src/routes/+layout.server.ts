@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { users, memberships } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { getCdnUrl } from '$lib/server/cdn';
 
 /**
  * Root layout server load — runs on every page navigation.
@@ -141,12 +142,18 @@ export const load: LayoutServerLoad = async (event) => {
 	event.locals.membership = membership;
 	event.locals.isSuperAdmin = isSuperAdmin;
 
+	// Compute favicon URL server-side so the client doesn't need getCdnUrl
+	const faviconUrl = siteSettings?.branding?.faviconCdnKey
+		? getCdnUrl(siteSettings.branding.faviconCdnKey)
+		: null;
+
 	return {
 		site,
 		siteSlug,
 		siteSettings,
 		user: event.locals.user,
 		membership,
-		isSuperAdmin
+		isSuperAdmin,
+		faviconUrl
 	};
 };

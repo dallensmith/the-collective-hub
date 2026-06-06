@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
+	import { assets } from '$app/paths';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
@@ -79,6 +80,14 @@
 		].join('; ')
 	);
 </script>
+
+<svelte:head>
+	{#if data.faviconUrl}
+		<link rel="icon" href={data.faviconUrl} />
+	{:else}
+		<link rel="icon" href="{assets}favicon.png" />
+	{/if}
+</svelte:head>
 
 <div class="site-root" style={cssVars}>
 	{@render children()}

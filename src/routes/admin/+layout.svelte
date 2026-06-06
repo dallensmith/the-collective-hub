@@ -37,16 +37,25 @@
 		placeholder: boolean;
 	}
 
-	const navItems: NavItem[] = [
+	/** Feature flags from layout data (default: all enabled when unset) */
+	let featureFlags = $derived((data as Record<string, unknown>).featureFlags as Record<string, boolean> | undefined ?? {});
+
+	/** Whether a given feature is enabled (undefined = enabled for backward compat) */
+	function flag(key: string): boolean {
+		return featureFlags[key] !== false;
+	}
+
+	let navItems = $derived<NavItem[]>([
 		{ label: 'Dashboard', href: '/admin', placeholder: false },
 		{ label: 'Settings', href: '/admin/settings', placeholder: false },
-		{ label: 'Branding', href: '/admin/branding', placeholder: false },
-		{ label: 'Homepage', href: '/admin/homepage', placeholder: false },
-		{ label: 'Links', href: '/admin/links', placeholder: false },
-		{ label: 'Events', href: '/admin/events', placeholder: false },
-		{ label: 'Assets', href: '/admin/assets', placeholder: false },
-		{ label: 'Team', href: '/admin/team', placeholder: true }
-	];
+		...(flag('branding') ? [{ label: 'Branding', href: '/admin/branding', placeholder: false }] : []),
+		...(flag('homepageEditor') ? [{ label: 'Homepage', href: '/admin/homepage', placeholder: false }] : []),
+		...(flag('navLinks') || flag('socialLinks') ? [{ label: 'Links', href: '/admin/links', placeholder: false }] : []),
+		...(flag('events') ? [{ label: 'Events', href: '/admin/events', placeholder: false }] : []),
+		...(flag('assetLibrary') ? [{ label: 'Assets', href: '/admin/assets', placeholder: false }] : []),
+		...(data.isSuperAdmin ? [{ label: 'Super Admin', href: '/admin/super', placeholder: false }] : []),
+		{ label: 'Team', href: '/admin/team', placeholder: false }
+	]);
 </script>
 
 <svelte:head>
@@ -95,7 +104,7 @@
 		<div class="sidebar-footer">
 			<a href="/" class="back-link">← Back to Site</a>
 			{#if data.isSuperAdmin}
-				<a href="/admin" class="back-link super-admin-link" title="View All Sites (Phase 4)">
+				<a href="/admin/super" class="back-link super-admin-link" title="View All Sites">
 					🌐 View All Sites
 				</a>
 			{/if}

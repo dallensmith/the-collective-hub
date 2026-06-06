@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { siteSettings } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import type { Actions } from '@sveltejs/kit';
+import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
 
@@ -22,6 +22,11 @@ export const load: PageServerLoad = async (event) => {
 			showNextEvent: true,
 			showSchedule: true
 		};
+	}
+
+	// Feature flag guard: homepageEditor must be enabled
+	if (event.locals.siteSettings?.featureFlags?.homepageEditor === false) {
+		throw error(403, 'The Homepage Editor feature is disabled for this site.');
 	}
 
 	const [row] = await db

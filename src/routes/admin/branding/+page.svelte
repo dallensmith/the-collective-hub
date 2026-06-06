@@ -20,6 +20,9 @@
 	let logoCdnKey = $state(data.branding?.logoCdnKey ?? '');
 	let backgroundCdnKey = $state(data.branding?.backgroundCdnKey ?? '');
 
+	// Favicon CDN key — initialised from saved branding, updated on upload
+	let faviconCdnKey = $state(data.branding?.faviconCdnKey ?? '');
+
 	// Theme values
 	let themePreset = $state(data.theme?.preset ?? 'dark');
 	let accentColor = $state(data.theme?.accentColor ?? '#e63946');
@@ -109,9 +112,12 @@
 				const err = await res.json().catch(() => ({ message: 'Upload failed.' }));
 				feedback = { type: 'error', message: err.message ?? 'Favicon upload failed.' };
 			} else {
-				feedback = { type: 'success', message: 'Favicon uploaded. Save to apply.' };
-				// Reload to get the new asset in the list
-				window.location.reload();
+				const asset = await res.json() as AssetItem;
+				// Update the favicon key reactively so the form includes it on save
+				faviconCdnKey = asset.cdnKey;
+				// Prepend the new asset to the list so it appears in asset pickers
+				data.assetList.unshift(asset);
+				feedback = { type: 'success', message: 'Favicon uploaded. Click Save Branding to apply.' };
 			}
 		} catch {
 			feedback = { type: 'error', message: 'Network error during upload.' };
@@ -312,9 +318,9 @@
 			<div class="form-group">
 				<label class="form-label" for="favicon-upload">Favicon</label>
 				<div class="favicon-row">
-					{#if data.branding?.faviconCdnKey && getAssetUrl(data.branding.faviconCdnKey)}
+					{#if faviconCdnKey && getAssetUrl(faviconCdnKey)}
 						<img
-							src={getAssetUrl(data.branding.faviconCdnKey)}
+							src={getAssetUrl(faviconCdnKey)}
 							alt="Current favicon"
 							class="favicon-preview"
 							width="32"
@@ -333,7 +339,7 @@
 				<input
 					type="hidden"
 					name="faviconCdnKey"
-					value={data.branding?.faviconCdnKey ?? ''}
+					value={faviconCdnKey}
 				/>
 				<p class="form-help">
 					Upload a favicon image. It will be added to your asset library. Recommended: 32×32 PNG.

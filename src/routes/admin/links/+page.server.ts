@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { navLinks, socialLinks } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
-import type { Actions } from '@sveltejs/kit';
+import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -12,6 +12,12 @@ export const load: PageServerLoad = async (event) => {
 
 	if (!site) {
 		return { navLinks: [], socialLinks: [] };
+	}
+
+	// Feature flag guard: at least one link feature must be enabled
+	const ff = event.locals.siteSettings?.featureFlags;
+	if (ff?.navLinks === false && ff?.socialLinks === false) {
+		throw error(403, 'The Links feature is disabled for this site.');
 	}
 
 	const navRows = await db
@@ -212,14 +218,19 @@ export const actions: Actions = {
 		if (!id) return { success: false, error: 'Link ID is required.', action: 'deleteSocialLink' };
 
 		try {
+			// Verify site ownership before deleting
 			const [existing] = await db
-				.select({ id: socialLinks.id })
+				.select({ id: socialLinks.id, siteId: socialLinks.siteId })
 				.from(socialLinks)
 				.where(eq(socialLinks.id, id))
 				.limit(1);
 
 			if (!existing) {
 				return { success: false, error: 'Link not found.', action: 'deleteSocialLink' };
+			}
+
+			if (existing.siteId !== site.id) {
+				return { success: false, error: 'You do not have permission to delete this link.', action: 'deleteSocialLink' };
 			}
 
 			await db.delete(socialLinks).where(eq(socialLinks.id, id));

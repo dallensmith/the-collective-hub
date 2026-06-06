@@ -40,7 +40,13 @@ export const POST: RequestHandler = async (event) => {
 	const originalMimeType = file.type || 'application/octet-stream';
 
 	// Upload to CDN (validates, converts to webp)
-	const result = await uploadToCdn(buffer, site.slug, 'uploads', originalMimeType);
+	let result;
+	try {
+		result = await uploadToCdn(buffer, site.slug, 'uploads', originalMimeType);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'CDN upload failed.';
+		error(503, message);
+	}
 
 	// Create asset record in the database
 	const [record] = await db
@@ -104,7 +110,12 @@ export const DELETE: RequestHandler = async (event) => {
 	}
 
 	// Delete from CDN
-	await deleteFromCdn(record.cdnKey);
+	try {
+		await deleteFromCdn(record.cdnKey);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'CDN delete failed.';
+		error(503, message);
+	}
 
 	// Delete from database
 	await db.delete(assets).where(eq(assets.id, assetId));

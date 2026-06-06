@@ -33,12 +33,23 @@ export interface LayoutSettings {
 	preset: 'standard';
 }
 
+/** Feature flags controlling which features are enabled for a site */
+export interface FeatureFlags {
+	events?: boolean;          // Enable events feature
+	navLinks?: boolean;        // Enable custom nav links
+	socialLinks?: boolean;     // Enable social links
+	branding?: boolean;        // Enable branding customization
+	homepageEditor?: boolean;  // Enable homepage content editing
+	assetLibrary?: boolean;    // Enable asset upload/library
+}
+
 /** Full site settings shape stored in siteSettings.settings JSON */
 export interface SiteSettingsData {
 	branding: BrandingSettings;
 	theme: ThemeSettings;
 	homepage: HomepageSettings;
 	layout: LayoutSettings;
+	featureFlags?: FeatureFlags;
 }
 
 /** User role within a site */

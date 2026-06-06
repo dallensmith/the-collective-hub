@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import { siteSettings, assets } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getCdnUrl } from '$lib/server/cdn';
-import type { Actions } from '@sveltejs/kit';
+import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
 
@@ -19,6 +19,11 @@ export const load: PageServerLoad = async (event) => {
 			theme: null,
 			assetList: []
 		};
+	}
+
+	// Feature flag guard: branding must be enabled
+	if (event.locals.siteSettings?.featureFlags?.branding === false) {
+		throw error(403, 'The Branding feature is disabled for this site.');
 	}
 
 	const [row] = await db

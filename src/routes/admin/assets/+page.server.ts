@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { assets } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getCdnUrl, deleteFromCdn } from '$lib/server/cdn';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
 /**
@@ -13,6 +14,11 @@ export const load: PageServerLoad = async (event) => {
 
 	if (!site) {
 		return { assetList: [] };
+	}
+
+	// Feature flag guard: assetLibrary must be enabled
+	if (event.locals.siteSettings?.featureFlags?.assetLibrary === false) {
+		throw error(403, 'The Asset Library feature is disabled for this site.');
 	}
 
 	const rows = await db

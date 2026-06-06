@@ -48,9 +48,6 @@
 
 <svelte:head>
 	<title>{data.heroTitle}</title>
-	{#if data.faviconUrl}
-		<link rel="icon" href={data.faviconUrl} />
-	{/if}
 </svelte:head>
 
 <!-- Error state: no site configured -->
