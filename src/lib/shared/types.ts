@@ -1,5 +1,12 @@
 import type { Site } from '$lib/server/db/schema';
 
+/** Payload embedded in a signed preview cookie token */
+export interface PreviewTokenPayload {
+	siteId: string;
+	userId: string;
+	exp: number; // Unix timestamp (seconds)
+}
+
 /** Branding configuration for a site */
 export interface BrandingSettings {
 	siteName: string;

@@ -50,6 +50,27 @@
 	<title>{data.heroTitle}</title>
 </svelte:head>
 
+<!-- Preview Mode Banner -->
+{#if data.isPreviewing}
+	<div class="preview-banner">
+		<span class="preview-banner-icon">🔍</span>
+		<span class="preview-banner-text">Preview Mode — viewing unpublished changes.</span>
+		<form method="POST" action="/api/preview" class="preview-banner-exit-form">
+			<!-- SvelteKit doesn't support native DELETE method in forms, so we use POST with a hidden _method -->
+			<button
+				type="button"
+				class="preview-banner-exit"
+				onclick={async () => {
+					await fetch('/api/preview', { method: 'DELETE' });
+					window.location.reload();
+				}}
+			>
+				Exit Preview
+			</button>
+		</form>
+	</div>
+{/if}
+
 <!-- Error state: no site configured -->
 {#if !data.site}
 	<main class="error-state">
@@ -316,6 +337,50 @@
 {/if}
 
 <style>
+	/* ═══════════════════════════════════════════════════════════ */
+	/* Preview Banner */
+	/* ═══════════════════════════════════════════════════════════ */
+	.preview-banner {
+		position: sticky;
+		top: 0;
+		z-index: 60;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		padding: 0.55rem 1.5rem;
+		background: #f59e0b;
+		color: #1a1a2e;
+		font-size: 0.85rem;
+		font-weight: 600;
+		border-bottom: 2px solid #d97706;
+		flex-wrap: wrap;
+	}
+
+	.preview-banner-icon {
+		font-size: 1rem;
+	}
+
+	.preview-banner-exit-form {
+		display: inline;
+	}
+
+	.preview-banner-exit {
+		padding: 0.25rem 0.75rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: #fff;
+		background: #1a1a2e;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.preview-banner-exit:hover {
+		background: #333;
+	}
+
 	/* ═══════════════════════════════════════════════════════════ */
 	/* Nav Bar */
 	/* ═══════════════════════════════════════════════════════════ */

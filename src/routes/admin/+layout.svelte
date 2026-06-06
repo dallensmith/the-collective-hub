@@ -21,6 +21,54 @@
 		window.location.href = '/';
 	}
 
+	/** Enable preview mode: POST to /api/preview, then open public site in a new tab */
+	async function enablePreview() {
+		try {
+			const res = await fetch('/api/preview', { method: 'POST' });
+			if (res.ok) {
+				window.open('/', '_blank');
+			} else {
+				const err = await res.json().catch(() => ({ error: 'Failed to enable preview.' }));
+				alert(err.error ?? 'Failed to enable preview mode.');
+			}
+		} catch {
+			alert('Network error enabling preview mode.');
+		}
+	}
+
+	/** Discard all drafts after confirmation */
+	async function handleDiscardDrafts() {
+		if (!confirm('Discard all unpublished drafts? This cannot be undone.')) return;
+
+		const currentPath = $page.url.pathname;
+		// Submit to ?/discardDrafts on the current admin page
+		const formData = new FormData();
+		try {
+			const res = await fetch(`${currentPath}?/discardDrafts`, {
+				method: 'POST',
+				body: formData
+			});
+			if (res.ok) {
+				window.location.reload();
+			} else {
+				const err = await res.json().catch(() => ({ error: 'Failed to discard drafts.' }));
+				alert(err.error ?? 'Failed to discard drafts.');
+			}
+		} catch {
+			alert('Network error discarding drafts.');
+		}
+	}
+
+	/** Whether the current page is a settings-related page (shows draft status bar) */
+	let isSettingsPage = $derived(
+		$page.url.pathname.startsWith('/admin/settings') ||
+		$page.url.pathname.startsWith('/admin/branding') ||
+		$page.url.pathname.startsWith('/admin/homepage')
+	);
+
+	/** Whether drafts exist */
+	let hasDrafts = $derived((data as Record<string, unknown>).hasDrafts as boolean ?? false);
+
 	/**
 	 * Check if a nav path matches the current page.
 	 * Dashboard ("/admin") only matches exactly; other paths match prefix.
@@ -149,6 +197,29 @@
 				<button class="logout-btn" onclick={handleLogout}>Logout</button>
 			</div>
 		</header>
+
+		<!-- Draft Status Bar (only on settings-related pages) -->
+		{#if isSettingsPage}
+			<div class="draft-bar">
+				<div class="draft-bar-status">
+					{#if hasDrafts}
+						<span class="draft-indicator draft-indicator--pending">📝 Drafts pending — preview before publishing</span>
+					{:else}
+						<span class="draft-indicator draft-indicator--none">No unpublished changes</span>
+					{/if}
+				</div>
+				<div class="draft-bar-actions">
+					{#if hasDrafts}
+						<button class="draft-btn draft-btn--preview" onclick={enablePreview}>
+							🔍 Preview
+						</button>
+						<button class="draft-btn draft-btn--discard" onclick={handleDiscardDrafts}>
+							🗑️ Discard Drafts
+						</button>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Content Area -->
 		<main class="content">
@@ -393,6 +464,66 @@
 	.logout-btn:hover {
 		background: #e5534b;
 		color: #fff;
+	}
+
+	/* ── Draft Status Bar ──────────────────────────────────────── */
+	.draft-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.6rem 1.5rem;
+		background: #fff8e1;
+		border-bottom: 1px solid #ffe082;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.draft-bar-status {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.draft-indicator--pending {
+		color: #e65100;
+	}
+
+	.draft-indicator--none {
+		color: #888;
+	}
+
+	.draft-bar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.draft-btn {
+		padding: 0.35rem 0.8rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		border-radius: 5px;
+		border: none;
+		cursor: pointer;
+		transition: background 0.15s, opacity 0.15s;
+	}
+
+	.draft-btn--preview {
+		background: #1a1a2e;
+		color: #fff;
+	}
+
+	.draft-btn--preview:hover {
+		background: #333;
+	}
+
+	.draft-btn--discard {
+		background: transparent;
+		color: #e5534b;
+		border: 1px solid #e5534b;
+	}
+
+	.draft-btn--discard:hover {
+		background: #fde8e8;
 	}
 
 	/* ── Content Area ───────────────────────────────────────────── */

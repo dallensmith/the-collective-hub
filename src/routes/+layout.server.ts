@@ -5,6 +5,7 @@ import { users, memberships } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { getCdnUrl } from '$lib/server/cdn';
+import { getSiteBySlug } from '$lib/server/site-resolver';
 
 /**
  * Root layout server load — runs on every page navigation.
@@ -142,18 +143,49 @@ export const load: LayoutServerLoad = async (event) => {
 	event.locals.membership = membership;
 	event.locals.isSuperAdmin = isSuperAdmin;
 
+	// --- Preview Mode Authorization Refinement ---
+	// hooks.server.ts provisionally sets isPreviewing based on token validity.
+	// Here we refine it: the user must be authenticated AND authorized for the site.
+	let isPreviewing = event.locals.isPreviewing;
+
+	if (isPreviewing) {
+		const isAuthorizedForPreview =
+			isSuperAdmin ||
+			(membership && ['owner', 'admin', 'editor'].includes(membership.role));
+
+		if (!isAuthorizedForPreview) {
+			// User is not authorized — disable preview mode
+			isPreviewing = false;
+			event.locals.isPreviewing = false;
+			event.cookies.delete('ct_preview', { path: '/' });
+
+			// Re-load site settings without preview (live settings)
+			if (siteSlug) {
+				const liveContext = await getSiteBySlug(siteSlug, { preview: false });
+				event.locals.siteSettings = liveContext.settings;
+			}
+		} else if (siteSlug) {
+			// User is authorized — ensure siteSettings has draft-merged data
+			// (hooks already loaded with preview=true, but re-load to be safe)
+			const previewContext = await getSiteBySlug(siteSlug, { preview: true });
+			event.locals.siteSettings = previewContext.settings;
+		}
+	}
+
 	// Compute favicon URL server-side so the client doesn't need getCdnUrl
-	const faviconUrl = siteSettings?.branding?.faviconCdnKey
-		? getCdnUrl(siteSettings.branding.faviconCdnKey)
+	const currentSettings = event.locals.siteSettings ?? siteSettings;
+	const faviconUrl = currentSettings?.branding?.faviconCdnKey
+		? getCdnUrl(currentSettings.branding.faviconCdnKey)
 		: null;
 
 	return {
 		site,
 		siteSlug,
-		siteSettings,
+		siteSettings: currentSettings,
 		user: event.locals.user,
 		membership,
 		isSuperAdmin,
-		faviconUrl
+		faviconUrl,
+		isPreviewing
 	};
 };

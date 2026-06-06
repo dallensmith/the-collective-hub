@@ -17,7 +17,7 @@ import { eq, asc, and, gte } from 'drizzle-orm';
  */
 export const load: PageServerLoad = async (event) => {
 	const parent = await event.parent();
-	const { site, siteSettings, user, membership } = parent;
+	const { site, siteSettings, user, membership, isPreviewing } = parent;
 
 	const homepage = siteSettings?.homepage;
 	const branding = siteSettings?.branding;
@@ -79,33 +79,27 @@ export const load: PageServerLoad = async (event) => {
 	if (site && featureFlags?.events !== false) {
 		const now = new Date();
 
-		// Next upcoming published event
+		// In preview mode, show all events regardless of isPublished.
+		// In live mode, only published events appear.
+		const publishedFilter = isPreviewing
+			? [eq(events.siteId, site.id), gte(events.startTime, now)]
+			: [eq(events.siteId, site.id), eq(events.isPublished, true), gte(events.startTime, now)];
+
+		// Next upcoming event
 		const [next] = await db
 			.select()
 			.from(events)
-			.where(
-				and(
-					eq(events.siteId, site.id),
-					eq(events.isPublished, true),
-					gte(events.startTime, now)
-				)
-			)
+			.where(and(...publishedFilter))
 			.orderBy(asc(events.startTime))
 			.limit(1);
 
 		nextEvent = next ?? null;
 
-		// Upcoming published events (next 6)
+		// Upcoming events (next 6)
 		upcomingEvents = await db
 			.select()
 			.from(events)
-			.where(
-				and(
-					eq(events.siteId, site.id),
-					eq(events.isPublished, true),
-					gte(events.startTime, now)
-				)
-			)
+			.where(and(...publishedFilter))
 			.orderBy(asc(events.startTime))
 			.limit(6);
 	}
@@ -127,6 +121,7 @@ export const load: PageServerLoad = async (event) => {
 		navLinks: navLinkRows,
 		socialLinks: socialLinkRows,
 		nextEvent,
-		upcomingEvents
+		upcomingEvents,
+		isPreviewing
 	};
 };

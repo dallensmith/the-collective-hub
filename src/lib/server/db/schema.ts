@@ -94,6 +94,7 @@ export const siteSettings = pgTable(
 			.unique()
 			.references(() => sites.id, { onDelete: 'cascade' }),
 		settings: jsonb('settings').notNull().default({}),
+		draftSettings: jsonb('draft_settings'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true })
 			.notNull()

@@ -3,6 +3,12 @@
 	import type { LayoutData } from './$types';
 	import { assets } from '$app/paths';
 
+	/** Exit preview mode by calling the DELETE endpoint then reloading */
+	async function exitPreview() {
+		await fetch('/api/preview', { method: 'DELETE' });
+		window.location.reload();
+	}
+
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	/**
@@ -86,14 +92,65 @@
 		<link rel="icon" href={data.faviconUrl} />
 	{:else}
 		<link rel="icon" href="{assets}favicon.png" />
+		{/if}
+	</svelte:head>
+	
+	<!-- Preview Mode Banner (shown site-wide when an admin is previewing drafts) -->
+	{#if data.isPreviewing}
+		<div class="preview-banner">
+			<span class="preview-banner-icon">🔍</span>
+			<span class="preview-banner-text">Preview Mode — viewing unpublished changes.</span>
+			<button class="preview-banner-exit" onclick={exitPreview}>
+				Exit Preview
+			</button>
+		</div>
 	{/if}
-</svelte:head>
-
-<div class="site-root" style={cssVars}>
+	
+	<div class="site-root" style={cssVars}>
 	{@render children()}
 </div>
 
 <style>
+	/* ═══════════════════════════════════════════════════════════ */
+	/* Preview Banner */
+	/* ═══════════════════════════════════════════════════════════ */
+	.preview-banner {
+		position: sticky;
+		top: 0;
+		z-index: 100;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		padding: 0.55rem 1.5rem;
+		background: #f59e0b;
+		color: #1a1a2e;
+		font-size: 0.85rem;
+		font-weight: 600;
+		border-bottom: 2px solid #d97706;
+		flex-wrap: wrap;
+	}
+
+	.preview-banner-icon {
+		font-size: 1rem;
+	}
+
+	.preview-banner-exit {
+		padding: 0.25rem 0.75rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: #fff;
+		background: #1a1a2e;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.preview-banner-exit:hover {
+		background: #333;
+	}
+
 	.site-root {
 		min-height: 100vh;
 		background: var(--color-background);

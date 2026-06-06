@@ -1,9 +1,10 @@
-import { db } from '$lib/server/db';
-import { siteSettings } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import type { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
+import { db } from '$lib/server/db';
+import { siteSettings } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
+import { saveDraft, publishDrafts, discardDrafts } from '$lib/server/settings-writer';
 
 /**
  * Load current site name and tagline from the siteSettings JSON blob.
@@ -32,65 +33,94 @@ export const load: PageServerLoad = async (event) => {
 };
 
 /**
- * Form action: saves site name and tagline into the siteSettings JSON blob.
- * Preserves all other settings keys (theme, homepage, layout) that may not exist yet.
+ * Build merged settings from form data against the current published settings.
+ * Returns the full SiteSettingsData object with branding updated.
  */
-export const actions: Actions = {
-	default: async (event) => {
-		const { site } = event.locals;
+async function buildMergedSettings(
+	siteId: string,
+	siteName: string,
+	tagline: string
+): Promise<Record<string, unknown>> {
+	const [row] = await db
+		.select({ settings: siteSettings.settings })
+		.from(siteSettings)
+		.where(eq(siteSettings.siteId, siteId))
+		.limit(1);
 
-		if (!site) {
-			return { success: false, error: 'No site context found.' };
+	const currentSettings = (row?.settings ?? {}) as Record<string, unknown>;
+	const currentBranding = (currentSettings.branding ?? {}) as Record<string, unknown>;
+
+	return {
+		...currentSettings,
+		branding: {
+			...currentBranding,
+			siteName,
+			tagline
 		}
+	};
+}
+
+/** Form validation shared by saveDraft and publish */
+function validate(formData: FormData): { siteName: string; tagline: string } | { error: string; field: string } {
+	const siteName = formData.get('siteName')?.toString().trim() ?? '';
+	const tagline = formData.get('tagline')?.toString().trim() ?? '';
+
+	if (!siteName) {
+		return { error: 'Site name is required.', field: 'siteName' };
+	}
+
+	return { siteName, tagline };
+}
+
+export const actions: Actions = {
+	/** Save changes as a draft — does not affect the live site. */
+	saveDraft: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
 
 		const formData = await event.request.formData();
-		const siteName = formData.get('siteName')?.toString().trim() ?? '';
-		const tagline = formData.get('tagline')?.toString().trim() ?? '';
-
-		// Validate: site name is required
-		if (!siteName) {
-			return { success: false, error: 'Site name is required.', field: 'siteName' };
-		}
+		const validation = validate(formData);
+		if ('error' in validation) return { success: false, ...validation };
 
 		try {
-			// Read current settings to preserve other keys
-			const [row] = await db
-				.select({ settings: siteSettings.settings })
-				.from(siteSettings)
-				.where(eq(siteSettings.siteId, site.id))
-				.limit(1);
-
-			const currentSettings = (row?.settings ?? {}) as Record<string, unknown>;
-			const currentBranding = (currentSettings.branding ?? {}) as Record<string, unknown>;
-
-			// Merge: update branding.siteName and branding.tagline, preserve everything else
-			const updatedSettings = {
-				...currentSettings,
-				branding: {
-					...currentBranding,
-					siteName,
-					tagline
-				}
-			};
-
-			// Upsert into siteSettings (insert if no row exists for this site, update if it does)
-			await db
-				.insert(siteSettings)
-				.values({
-					siteId: site.id,
-					settings: updatedSettings
-				})
-				.onConflictDoUpdate({
-					target: siteSettings.siteId,
-					set: {
-						settings: updatedSettings,
-						updatedAt: new Date()
-					}
-				});
-
-			return { success: true };
+			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline);
+			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
+			return { success: true, draftSaved: true };
 		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Failed to save settings.';
+			const message = err instanceof Error ? err.message : 'Failed to save draft.';
+			return { success: false, error: message };
+		}
+	},
+
+	/** Publish changes immediately to the live site, clearing any drafts. */
+	publish: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
+
+		const formData = await event.request.formData();
+		const validation = validate(formData);
+		if ('error' in validation) return { success: false, ...validation };
+
+		try {
+			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline);
+			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
+			return { success: true, published: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to publish settings.';
+			return { success: false, error: message };
+		}
+	},
+
+	/** Discard all pending drafts for this site without publishing. */
+	discardDrafts: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
+
+		try {
+			await discardDrafts(site.id);
+			return { success: true, draftsDiscarded: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to discard drafts.';
 			return { success: false, error: message };
 		}
 	}

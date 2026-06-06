@@ -38,7 +38,15 @@
 		if (form) {
 			saving = false;
 			if (form.success) {
-				feedback = { type: 'success', message: 'Branding settings saved.' };
+				if ((form as Record<string, unknown>).draftSaved) {
+					feedback = { type: 'success', message: 'Draft saved. Changes are not yet live.' };
+				} else if ((form as Record<string, unknown>).published) {
+					feedback = { type: 'success', message: 'Branding published and live.' };
+				} else if ((form as Record<string, unknown>).draftsDiscarded) {
+					feedback = { type: 'success', message: 'Drafts discarded.' };
+				} else {
+					feedback = { type: 'success', message: 'Branding settings saved.' };
+				}
 			} else if (form.error) {
 				feedback = { type: 'error', message: form.error };
 			}
@@ -493,12 +501,30 @@
 			<!-- Actions -->
 			<!-- ═══════════════════════════════════════════ -->
 			<div class="form-actions">
-				<button type="submit" class="save-btn" disabled={saving}>
+				<button
+					type="submit"
+					class="save-btn save-btn--draft"
+					formaction="?/saveDraft"
+					disabled={saving}
+				>
 					{#if saving}
 						<span class="spinner"></span>
 						Saving…
 					{:else}
-						Save Branding
+						Save Draft
+					{/if}
+				</button>
+				<button
+					type="submit"
+					class="save-btn"
+					formaction="?/publish"
+					disabled={saving}
+				>
+					{#if saving}
+						<span class="spinner"></span>
+						Publishing…
+					{:else}
+						🗸 Publish
 					{/if}
 				</button>
 
@@ -921,6 +947,14 @@
 	.save-btn:disabled {
 		opacity: 0.7;
 		cursor: not-allowed;
+	}
+
+	.save-btn--draft {
+		background: #555;
+	}
+
+	.save-btn--draft:hover {
+		background: #444;
 	}
 
 	.preview-link {
