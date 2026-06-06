@@ -1,0 +1,13 @@
+node_modules/
+.git/
+.svelte-kit/
+drizzle/
+docs/
+.roomodes
+.roo/
+.env
+.env.*
+*.md
+.gitignore
+.DS_Store
+Thumbs.db
