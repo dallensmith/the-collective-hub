@@ -40,6 +40,12 @@ export interface LayoutSettings {
 	preset: 'standard';
 }
 
+/** Discord integration settings */
+export interface DiscordSettings {
+	guildId: string | null;
+	eventsEnabled: boolean;
+}
+
 /** Feature flags controlling which features are enabled for a site */
 export interface FeatureFlags {
 	events?: boolean;          // Enable events feature
@@ -48,6 +54,7 @@ export interface FeatureFlags {
 	branding?: boolean;        // Enable branding customization
 	homepageEditor?: boolean;  // Enable homepage content editing
 	assetLibrary?: boolean;    // Enable asset upload/library
+	discordEvents?: boolean;   // Enable Discord event integration
 }
 
 /** Full site settings shape stored in siteSettings.settings JSON */
@@ -57,6 +64,7 @@ export interface SiteSettingsData {
 	homepage: HomepageSettings;
 	layout: LayoutSettings;
 	featureFlags?: FeatureFlags;
+	discord?: DiscordSettings;
 }
 
 /** User role within a site */

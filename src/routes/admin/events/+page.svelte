@@ -157,7 +157,27 @@
 
 <div class="events-page">
 	<h1 class="page-title">Events</h1>
-	<p class="page-desc">Manage your site's event listings. Draft events are hidden from the public site.</p>
+
+	<!-- Discord Events Active Banner -->
+	{#if data.discordEventsEnabled}
+		<div class="discord-banner">
+			<div class="discord-banner-icon">🎮</div>
+			<div class="discord-banner-text">
+				<strong>Events are managed in Discord.</strong>
+				Your site is configured to pull scheduled events from Discord. Event creation, editing, and publishing happen in your Discord server.
+				<a
+					href="https://discord.com/events/{data.discordGuildId}"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="discord-banner-link"
+				>
+					View Events in Discord →
+				</a>
+			</div>
+		</div>
+	{:else}
+		<p class="page-desc">Manage your site's event listings. Draft events are hidden from the public site.</p>
+	{/if}
 
 	<!-- Feedback message -->
 	{#if feedback}
@@ -173,6 +193,8 @@
 		</div>
 	{/if}
 
+	<!-- Native Events UI — hidden when Discord events are active -->
+	{#if !data.discordEventsEnabled}
 	<!-- ═══════════════════════════════════════════════════════════ -->
 	<!-- Filter Tabs -->
 	<!-- ═══════════════════════════════════════════════════════════ -->
@@ -587,6 +609,7 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 </div>
 
 <style>
@@ -1083,6 +1106,47 @@
 		to {
 			transform: rotate(360deg);
 		}
+	}
+
+	/* ── Discord Banner ─────────────────────────────────────────── */
+	.discord-banner {
+		display: flex;
+		align-items: flex-start;
+		gap: 1rem;
+		padding: 1rem 1.25rem;
+		background: #eef2ff;
+		border: 1px solid #c7d2fe;
+		border-radius: 8px;
+		margin-bottom: 1.5rem;
+	}
+
+	.discord-banner-icon {
+		font-size: 1.5rem;
+		flex-shrink: 0;
+	}
+
+	.discord-banner-text {
+		font-size: 0.9rem;
+		color: #3730a3;
+		line-height: 1.5;
+	}
+
+	.discord-banner-text strong {
+		display: block;
+		margin-bottom: 0.25rem;
+	}
+
+	.discord-banner-link {
+		display: inline-block;
+		margin-top: 0.5rem;
+		color: #4f46e5;
+		font-weight: 600;
+		text-decoration: none;
+		font-size: 0.85rem;
+	}
+
+	.discord-banner-link:hover {
+		text-decoration: underline;
 	}
 
 	/* ── Responsive ──────────────────────────────────────────────── */

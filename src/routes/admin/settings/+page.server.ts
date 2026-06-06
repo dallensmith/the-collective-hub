@@ -15,7 +15,7 @@ export const load: PageServerLoad = async (event) => {
 	const { site } = event.locals;
 
 	if (!site) {
-		return { siteName: '', tagline: '' };
+		return { siteName: '', tagline: '', discordGuildId: '', discordEventsEnabled: false };
 	}
 
 	const [row] = await db
@@ -26,21 +26,26 @@ export const load: PageServerLoad = async (event) => {
 
 	const settings = (row?.settings ?? {}) as Partial<SiteSettingsData>;
 	const branding = settings.branding;
+	const discord = settings.discord;
 
 	return {
 		siteName: branding?.siteName || site.name,
-		tagline: branding?.tagline || ''
+		tagline: branding?.tagline || '',
+		discordGuildId: discord?.guildId ?? '',
+		discordEventsEnabled: discord?.eventsEnabled ?? false
 	};
 };
 
 /**
  * Build merged settings from form data against the current published settings.
- * Returns the full SiteSettingsData object with branding updated.
+ * Returns the full SiteSettingsData object with branding + discord updated.
  */
 async function buildMergedSettings(
 	siteId: string,
 	siteName: string,
-	tagline: string
+	tagline: string,
+	discordGuildId: string,
+	discordEventsEnabled: boolean
 ): Promise<Record<string, unknown>> {
 	const [row] = await db
 		.select({ settings: siteSettings.settings })
@@ -50,6 +55,7 @@ async function buildMergedSettings(
 
 	const currentSettings = (row?.settings ?? {}) as Record<string, unknown>;
 	const currentBranding = (currentSettings.branding ?? {}) as Record<string, unknown>;
+	const currentDiscord = (currentSettings.discord ?? {}) as Record<string, unknown>;
 
 	return {
 		...currentSettings,
@@ -57,20 +63,27 @@ async function buildMergedSettings(
 			...currentBranding,
 			siteName,
 			tagline
+		},
+		discord: {
+			...currentDiscord,
+			guildId: discordGuildId || null,
+			eventsEnabled: discordEventsEnabled
 		}
 	};
 }
 
 /** Form validation shared by saveDraft and publish */
-function validate(formData: FormData): { siteName: string; tagline: string } | { error: string; field: string } {
+function validate(formData: FormData): { siteName: string; tagline: string; discordGuildId: string; discordEventsEnabled: boolean } | { error: string; field: string } {
 	const siteName = formData.get('siteName')?.toString().trim() ?? '';
 	const tagline = formData.get('tagline')?.toString().trim() ?? '';
+	const discordGuildId = formData.get('discordGuildId')?.toString().trim() ?? '';
+	const discordEventsEnabled = formData.get('discordEventsEnabled') === 'on';
 
 	if (!siteName) {
 		return { error: 'Site name is required.', field: 'siteName' };
 	}
 
-	return { siteName, tagline };
+	return { siteName, tagline, discordGuildId, discordEventsEnabled };
 }
 
 export const actions: Actions = {
@@ -84,7 +97,7 @@ export const actions: Actions = {
 		if ('error' in validation) return { success: false, ...validation };
 
 		try {
-			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline);
+			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline, validation.discordGuildId, validation.discordEventsEnabled);
 			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
 
 			logAuditEvent({
@@ -113,7 +126,7 @@ export const actions: Actions = {
 		if ('error' in validation) return { success: false, ...validation };
 
 		try {
-			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline);
+			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline, validation.discordGuildId, validation.discordEventsEnabled);
 			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
 
 			logAuditEvent({

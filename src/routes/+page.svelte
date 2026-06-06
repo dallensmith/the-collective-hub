@@ -294,6 +294,13 @@
 		{/if}
 	{/if}
 
+	<!-- Discord Events Attribution -->
+	{#if data.eventsSource === 'discord'}
+		<div class="discord-attribution">
+			Events via Discord
+		</div>
+	{/if}
+
 	<!-- ═══════════════════════════════════════════════════════════ -->
 	<!-- SOCIAL LINKS SECTION (only if socialLinks has items) -->
 	<!-- ═══════════════════════════════════════════════════════════ -->
@@ -949,6 +956,15 @@
 	.footer-admin-link:hover {
 		opacity: 0.8;
 		text-decoration: underline;
+	}
+
+	/* ── Discord Attribution ───────────────────────────────────── */
+	.discord-attribution {
+		text-align: center;
+		font-size: 0.8rem;
+		color: #888;
+		padding: 0.75rem 1rem;
+		opacity: 0.7;
 	}
 
 	/* Responsive */

@@ -7,17 +7,32 @@ import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load all events for the current site, ordered by startTime descending (newest first).
+ * When Discord events are enabled, returns a flag so the page can show a notice
+ * instead of the native event manager.
  */
 export const load: PageServerLoad = async (event) => {
 	const { site } = event.locals;
 
 	if (!site) {
-		return { events: [] };
+		return { events: [], discordEventsEnabled: false, discordGuildId: null };
 	}
 
 	// Feature flag guard: events must be enabled
 	if (event.locals.siteSettings?.featureFlags?.events === false) {
 		throw error(403, 'The Events feature is disabled for this site.');
+	}
+
+	const discordConfig = event.locals.siteSettings?.discord;
+	const discordEventsEnabled = discordConfig?.eventsEnabled === true && discordConfig?.guildId != null;
+	const discordGuildId = discordConfig?.guildId ?? null;
+
+	// When Discord events are enabled, skip native event queries
+	if (discordEventsEnabled) {
+		return {
+			events: [],
+			discordEventsEnabled: true,
+			discordGuildId
+		};
 	}
 
 	const eventRows = await db
@@ -27,7 +42,9 @@ export const load: PageServerLoad = async (event) => {
 		.orderBy(desc(events.startTime));
 
 	return {
-		events: eventRows
+		events: eventRows,
+		discordEventsEnabled: false,
+		discordGuildId: null
 	};
 };
 

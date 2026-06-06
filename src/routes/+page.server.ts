@@ -3,6 +3,31 @@ import { getCdnUrl } from '$lib/server/cdn';
 import { db } from '$lib/server/db';
 import { navLinks, socialLinks, events } from '$lib/server/db/schema';
 import { eq, asc, and, gte } from 'drizzle-orm';
+import { getScheduledEvents } from '$lib/server/discord';
+import type { DiscordEvent } from '$lib/server/discord';
+
+/**
+ * Normalize a Discord event into the same shape as a native DB event
+ * so the Svelte page can render them identically.
+ */
+function discordEventToDisplayEvent(d: DiscordEvent) {
+	return {
+		id: d.id,
+		title: d.name,
+		description: d.description,
+		startTime: new Date(d.startTime),
+		endTime: d.endTime ? new Date(d.endTime) : null,
+		location: d.location,
+		externalLink: d.entityType === 'EXTERNAL'
+			? `https://discord.com/events/${d.guildId}/${d.id}`
+			: null,
+		imageCdnKey: d.imageUrl,
+		// Metadata for the template
+		eventType: d.entityType.toLowerCase() as string,
+		isPublished: true,
+		_discordEvent: true as const
+	};
+}
 
 /**
  * Homepage server load — flattens site settings into simple props.
@@ -14,6 +39,9 @@ import { eq, asc, and, gte } from 'drizzle-orm';
  *
  * Fallback chain for each prop ensures the page always has sensible
  * values, even when settings have never been configured by the owner.
+ *
+ * When Discord events are enabled and a guildId is configured, events
+ * are fetched from Discord's API instead of the native events table.
  */
 export const load: PageServerLoad = async (event) => {
 	const parent = await event.parent();
@@ -71,37 +99,50 @@ export const load: PageServerLoad = async (event) => {
 		}
 	}
 
-	// ─── Events queries (respect feature flags) ─────────────────────────
+	// ─── Events queries ──────────────────────────────────────────────────
 
-	let nextEvent: typeof events.$inferSelect | null = null;
-	let upcomingEvents: typeof events.$inferSelect[] = [];
+	let nextEvent: ReturnType<typeof discordEventToDisplayEvent> | typeof events.$inferSelect | null = null;
+	let upcomingEvents: (ReturnType<typeof discordEventToDisplayEvent> | typeof events.$inferSelect)[] = [];
+	let eventsSource: 'native' | 'discord' = 'native';
 
 	if (site && featureFlags?.events !== false) {
-		const now = new Date();
+		const discordConfig = siteSettings?.discord;
+		const useDiscordEvents =
+			discordConfig?.eventsEnabled === true && discordConfig?.guildId != null;
 
-		// In preview mode, show all events regardless of isPublished.
-		// In live mode, only published events appear.
-		const publishedFilter = isPreviewing
-			? [eq(events.siteId, site.id), gte(events.startTime, now)]
-			: [eq(events.siteId, site.id), eq(events.isPublished, true), gte(events.startTime, now)];
+		if (useDiscordEvents) {
+			// Fetch Discord Scheduled Events via the bot
+			const discordEvents = await getScheduledEvents(discordConfig.guildId!);
 
-		// Next upcoming event
-		const [next] = await db
-			.select()
-			.from(events)
-			.where(and(...publishedFilter))
-			.orderBy(asc(events.startTime))
-			.limit(1);
+			if (discordEvents.length > 0) {
+				nextEvent = discordEventToDisplayEvent(discordEvents[0]);
+				upcomingEvents = discordEvents.slice(0, 6).map(discordEventToDisplayEvent);
+			}
+			eventsSource = 'discord';
+		} else {
+			// Native events (existing behavior)
+			const now = new Date();
 
-		nextEvent = next ?? null;
+			const publishedFilter = isPreviewing
+				? [eq(events.siteId, site.id), gte(events.startTime, now)]
+				: [eq(events.siteId, site.id), eq(events.isPublished, true), gte(events.startTime, now)];
 
-		// Upcoming events (next 6)
-		upcomingEvents = await db
-			.select()
-			.from(events)
-			.where(and(...publishedFilter))
-			.orderBy(asc(events.startTime))
-			.limit(6);
+			const [next] = await db
+				.select()
+				.from(events)
+				.where(and(...publishedFilter))
+				.orderBy(asc(events.startTime))
+				.limit(1);
+
+			nextEvent = next ?? null;
+
+			upcomingEvents = await db
+				.select()
+				.from(events)
+				.where(and(...publishedFilter))
+				.orderBy(asc(events.startTime))
+				.limit(6);
+		}
 	}
 
 	return {
@@ -122,6 +163,7 @@ export const load: PageServerLoad = async (event) => {
 		socialLinks: socialLinkRows,
 		nextEvent,
 		upcomingEvents,
-		isPreviewing
+		isPreviewing,
+		eventsSource
 	};
 };

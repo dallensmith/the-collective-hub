@@ -114,6 +114,43 @@
 				<p class="form-help">A short description shown beneath your site name. Optional.</p>
 			</div>
 
+			<!-- ═══════════════════════════════════════════════════════ -->
+			<!-- Discord Events Section -->
+			<!-- ═══════════════════════════════════════════════════════ -->
+			<div class="section-divider"></div>
+			<h2 class="section-title">Discord Events</h2>
+			<p class="section-desc">Pull Scheduled Events from your Discord server and display them on the public site. When enabled, Discord events replace native site events.</p>
+
+			<!-- Discord Server ID -->
+			<div class="form-group">
+				<label for="discordGuildId" class="form-label">
+					Discord Server ID
+				</label>
+				<input
+					type="text"
+					id="discordGuildId"
+					name="discordGuildId"
+					class="form-input"
+					value={data.discordGuildId}
+					maxlength={30}
+					placeholder="123456789012345678"
+				/>
+				<p class="form-help">
+					The Discord server (guild) ID to pull events from. Find this in Discord by enabling Developer Mode, then right-click your server icon → "Copy Server ID". The bot must be in your server.
+				</p>
+			</div>
+
+			<!-- Enable Discord Events -->
+			<div class="form-group">
+				<label class="form-label checkbox-label">
+					<input type="checkbox" name="discordEventsEnabled" checked={data.discordEventsEnabled} />
+					<span>Enable Discord Events</span>
+				</label>
+				<p class="form-help">
+					When enabled, scheduled events from your Discord server replace native site events on the public homepage. The native events manager will be hidden.
+				</p>
+			</div>
+
 			<!-- Submit -->
 			<div class="form-actions">
 				<button

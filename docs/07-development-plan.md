@@ -6,6 +6,8 @@ This is a step-by-step build order for Phase 1 and beyond. Each step lists what 
 
 **Follow the order.** Each step builds on the previous one. Don't skip ahead.
 
+> **Progress update (2026-06-06):** Steps 1–14 are complete. Step 15 (Dockerize & Deploy) is the next action item.
+
 ---
 
 ## Phase 1: Foundation
@@ -237,15 +239,23 @@ This is a step-by-step build order for Phase 1 and beyond. Each step lists what 
 
 ## Phase 2 Onward
 
-Once Phase 1 is fully working, continue with:
+Phases 2–5 are complete. The following were implemented:
 
-1. Nav links + social links admin pages and public rendering
-2. Homepage content editor (hero title, subtitle, about text, CTA)
-3. Events: schema, admin CRUD, public render
-4. Super admin dashboard (Phase 4)
-5. Role management (Phase 5)
+1. ✅ Nav links + social links admin pages and public rendering
+2. ✅ Homepage content editor (hero title, subtitle, about text, CTA)
+3. ✅ Events: schema, admin CRUD, public render
+4. ✅ Super admin dashboard (Phase 4)
+5. ✅ Role management (Phase 5)
+6. ✅ Preview mode (draft/publish workflow)
+7. ✅ Audit log (basic event logging + viewer)
+8. ✅ Feature flags system
+9. ✅ Discord Event Display (Phase 6a)
 
-Detailed steps for Phases 2-5 should be written once Phase 1 is complete and any lessons learned are incorporated.
+## Remaining
+
+- [ ] **Step 15: Dockerize and Deploy** — verify Dockerfile, set up first Coolify deployment
+- [ ] **Phase 6b: Discord Role Sync** — optional, requires `guilds.members.read` privileged intent
+- [ ] **Testing** — no automated tests exist yet
 
 ---
 

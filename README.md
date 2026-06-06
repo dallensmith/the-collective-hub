@@ -142,42 +142,58 @@ The app opens at [http://localhost:5173](http://localhost:5173).
 ├── src/
 │   ├── app.d.ts                    # App types, locals augmentation
 │   ├── app.html                    # HTML shell
-│   ├── hooks.server.ts             # Site resolver, auth handling
+│   ├── hooks.server.ts             # Site resolver, preview mode, auth, migration runner, deactivation guard
 │   ├── lib/
 │   │   ├── server/
-│   │   │   ├── auth.ts             # Better Auth configuration
-│   │   │   ├── cdn.ts              # CDN URL helpers
-│   │   │   ├── site-resolver.ts    # Site loading by SITE_SLUG
+│   │   │   ├── auth.ts             # Better Auth configuration (Discord OAuth)
+│   │   │   ├── cdn.ts              # CDN URL helpers (BunnyCDN / S3)
+│   │   │   ├── site-resolver.ts    # Site loading by SITE_SLUG (supports preview mode)
+│   │   │   ├── preview-token.ts    # HMAC-signed preview token sign/verify
+│   │   │   ├── settings-writer.ts  # Shared draft/publish/discard DB operations
+│   │   │   ├── discord.ts          # Discord REST API client (Scheduled Events) + cache
+│   │   │   ├── audit-log.ts        # Audit event logging utility
 │   │   │   └── db/
 │   │   │       ├── index.ts        # Drizzle + Postgres connection
 │   │   │       ├── migrate.ts      # Automated migration runner
-│   │   │       ├── schema.ts       # All table definitions
+│   │   │       ├── schema.ts       # All table definitions (sites, users, memberships, siteSettings, assets, navLinks, socialLinks, events, auditLog)
 │   │   │       └── seed.ts         # Local dev seed data
 │   │   └── shared/
-│   │       └── types.ts            # Shared TypeScript types
+│   │       ├── types.ts            # Shared TypeScript types (SiteSettingsData, FeatureFlags, DiscordSettings, etc.)
+│   │       └── timezone.ts         # Client-side timezone conversion utilities
 │   └── routes/
-│       ├── +layout.server.ts       # Root layout, loads site context
-│       ├── +layout.svelte
-│       ├── +page.server.ts         # Public homepage data
-│       ├── +page.svelte            # Public homepage
+│       ├── +layout.server.ts       # Root layout: site context, auth, owner bootstrap, super admin, preview refinement
+│       ├── +layout.svelte          # Root layout: theme CSS variables, favicon
+│       ├── +page.server.ts         # Public homepage data (branding, events, nav/social links, Discord events)
+│       ├── +page.svelte            # Public homepage (hero, about, events, social links)
 │       ├── login/
-│       │   └── +page.svelte        # Discord OAuth login page
+│       │   ├── +page.server.ts     # Login page loader
+│       │   └── +page.svelte        # "Login with Discord" page
 │       ├── admin/
-│       │   ├── +layout.server.ts   # Admin auth guard
-│       │   ├── +layout.svelte      # Admin shell / navigation
-│       │   ├── +page.svelte        # Admin dashboard
-│       │   ├── branding/           # Logo, colors, theme editor
-│       │   ├── settings/           # Site settings editor
-│       │   └── assets/             # Asset library (upload, browse)
+│       │   ├── +layout.server.ts   # Admin auth guard, hasDrafts check
+│       │   ├── +layout.svelte      # Admin shell (sidebar nav, top bar, preview controls)
+│       │   ├── +page.server.ts     # Admin dashboard loader
+│       │   ├── +page.svelte        # Admin dashboard (quick stats, links)
+│       │   ├── branding/           # Logo, colors, theme editor (saveDraft/publish/discardDrafts)
+│       │   ├── settings/           # Site name, tagline, Discord config editor
+│       │   ├── homepage/           # Hero title, subtitle, about, CTA editor
+│       │   ├── links/              # Nav links + social links CRUD manager
+│       │   ├── events/             # Events CRUD manager (or "Managed in Discord" banner)
+│       │   ├── assets/             # Asset library (upload, browse, copy CDN URL)
+│       │   ├── team/               # Role management (add/remove admins and editors)
+│       │   ├── super/              # Super admin dashboard (all sites, create, feature flags, clone)
+│       │   └── audit-log/          # Audit log viewer (filterable by entity type)
 │       └── api/
-│           └── assets/             # Asset upload API endpoint
-├── drizzle/                        # Drizzle migration files
-├── scripts/                        # Utility scripts
-├── docs/                           # Project documentation
+│           ├── assets/             # Asset upload API endpoint (webp conversion, validation)
+│           └── preview/            # Preview cookie API (enable/disable preview mode)
+├── drizzle/                        # Drizzle migration files (5 migrations)
+├── scripts/
+│   ├── clone-site.mjs              # Standalone site cloning script
+│   └── seed.mjs                    # Seed script entry point
+├── docs/                           # Project documentation (11 planning docs)
 ├── docker-compose.yml              # Local PostgreSQL
-├── Dockerfile                      # Multi-stage production build
+├── Dockerfile                      # Multi-stage production build (Node 22 Alpine)
 ├── drizzle.config.ts               # Drizzle Kit configuration
-├── svelte.config.js                # SvelteKit configuration
+├── svelte.config.js                # SvelteKit configuration (Node adapter)
 ├── tsconfig.json
 ├── vite.config.ts
 └── package.json
