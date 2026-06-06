@@ -40,7 +40,7 @@
 	const navItems: NavItem[] = [
 		{ label: 'Dashboard', href: '/admin', placeholder: false },
 		{ label: 'Settings', href: '/admin/settings', placeholder: false },
-		{ label: 'Branding', href: '/admin/branding', placeholder: true },
+		{ label: 'Branding', href: '/admin/branding', placeholder: false },
 		{ label: 'Homepage', href: '/admin/homepage', placeholder: true },
 		{ label: 'Links', href: '/admin/links', placeholder: true },
 		{ label: 'Events', href: '/admin/events', placeholder: true },
@@ -94,6 +94,11 @@
 
 		<div class="sidebar-footer">
 			<a href="/" class="back-link">← Back to Site</a>
+			{#if data.isSuperAdmin}
+				<a href="/admin" class="back-link super-admin-link" title="View All Sites (Phase 4)">
+					🌐 View All Sites
+				</a>
+			{/if}
 		</div>
 	</aside>
 
@@ -115,6 +120,11 @@
 			<span class="top-bar-site">{data.site?.name ?? 'Site'}</span>
 
 			<div class="top-bar-right">
+				{#if data.isSuperAdmin}
+					<span class="super-admin-badge" title="Super Admin — full access to all sites">
+						🛡️ Super Admin
+					</span>
+				{/if}
 				{#if data.user}
 					<div class="user-info">
 						<img
@@ -250,6 +260,9 @@
 	.sidebar-footer {
 		padding: 0.75rem 1.25rem;
 		border-top: 1px solid #21262d;
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
 	}
 
 	.back-link {
@@ -261,6 +274,15 @@
 
 	.back-link:hover {
 		color: #f0f6fc;
+	}
+
+	.super-admin-link {
+		font-size: 0.8rem;
+		color: #58a6ff;
+	}
+
+	.super-admin-link:hover {
+		color: #79b8ff;
 	}
 
 	/* ── Main Area ──────────────────────────────────────────────── */
@@ -313,6 +335,18 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
+	}
+
+	/* Super Admin Badge */
+	.super-admin-badge {
+		font-size: 0.75rem;
+		font-weight: 600;
+		padding: 0.25rem 0.6rem;
+		border-radius: 4px;
+		background: #fde8e8;
+		color: #9b1c1c;
+		border: 1px solid #f4b2b2;
+		white-space: nowrap;
 	}
 
 	.user-info {
@@ -398,6 +432,11 @@
 
 		.user-name {
 			display: none;
+		}
+
+		.super-admin-badge {
+			font-size: 0.65rem;
+			padding: 0.15rem 0.4rem;
 		}
 	}
 </style>

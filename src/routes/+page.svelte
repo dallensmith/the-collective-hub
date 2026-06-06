@@ -14,6 +14,9 @@
 
 <svelte:head>
 	<title>{data.heroTitle}</title>
+	{#if data.faviconUrl}
+		<link rel="icon" href={data.faviconUrl} />
+	{/if}
 </svelte:head>
 
 <!-- Error state: no site configured -->
@@ -24,11 +27,23 @@
 		<p>Run <code>npm run db:seed</code> to create the default "local-dev" site.</p>
 	</main>
 {:else}
-	<!-- ═══════════════════════════════════════════ -->
-	<!-- HERO SECTION                                 -->
-	<!-- ═══════════════════════════════════════════ -->
-	<section class="hero">
+	<!-- HERO SECTION -->
+	<section
+		class="hero"
+		style={data.backgroundUrl
+			? `background-image: url(${data.backgroundUrl}); background-size: cover; background-position: center;`
+			: ''}
+	>
 		<div class="hero-content">
+			{#if data.logoUrl}
+				<img
+					src={data.logoUrl}
+					alt={data.heroTitle}
+					class="hero-logo"
+					width="120"
+					height="120"
+				/>
+			{/if}
 			<h1>{data.heroTitle}</h1>
 
 			{#if data.heroSubtitle}
@@ -49,9 +64,7 @@
 		</div>
 	</section>
 
-	<!-- ═══════════════════════════════════════════ -->
-	<!-- ABOUT SECTION (only if aboutText is set)    -->
-	<!-- ═══════════════════════════════════════════ -->
+	<!-- ABOUT SECTION (only if aboutText is set) -->
 	{#if data.aboutText}
 		<section class="about">
 			<div class="about-content">
@@ -61,9 +74,7 @@
 		</section>
 	{/if}
 
-	<!-- ═══════════════════════════════════════════ -->
-	<!-- FOOTER                                      -->
-	<!-- ═══════════════════════════════════════════ -->
+	<!-- FOOTER -->
 	<footer class="footer">
 		<div class="footer-content">
 			<span class="footer-site-name">{data.site.name}</span>
@@ -76,7 +87,7 @@
 {/if}
 
 <style>
-	/* ── Error State ───────────────────────────── */
+	/* Error State */
 	.error-state {
 		display: flex;
 		flex-direction: column;
@@ -106,7 +117,7 @@
 		font-size: 0.9em;
 	}
 
-	/* ── Hero Section ──────────────────────────── */
+	/* Hero Section */
 	.hero {
 		min-height: 60vh;
 		display: flex;
@@ -118,11 +129,40 @@
 			color-mix(in srgb, var(--color-background) 85%, black) 100%
 		);
 		padding: 2rem;
+		position: relative;
+	}
+
+	/* Gradient overlay: always present; when a background image is set
+	   the overlay dims it so text remains readable */
+	.hero::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			135deg,
+			var(--color-background) 0%,
+			color-mix(in srgb, var(--color-background) 85%, black) 100%
+		);
+		z-index: 1;
+	}
+
+	.hero[style*="background-image"]::before {
+		opacity: 0.6;
 	}
 
 	.hero-content {
 		text-align: center;
 		max-width: 720px;
+		position: relative;
+		z-index: 2;
+	}
+
+	.hero-logo {
+		display: block;
+		margin: 0 auto 1.5rem;
+		border-radius: 12px;
+		object-fit: contain;
+		filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
 	}
 
 	.hero-content h1 {
@@ -162,7 +202,7 @@
 		transform: translateY(0);
 	}
 
-	/* ── About Section ─────────────────────────── */
+	/* About Section */
 	.about {
 		padding: 4rem 2rem;
 		display: flex;
@@ -188,7 +228,7 @@
 		font-size: 1.05rem;
 	}
 
-	/* ── Footer ────────────────────────────────── */
+	/* Footer */
 	.footer {
 		border-top: 1px solid rgba(176, 176, 176, 0.2);
 		padding: 1.5rem 2rem;
@@ -227,7 +267,7 @@
 		text-decoration: underline;
 	}
 
-	/* ── Responsive ────────────────────────────── */
+	/* Responsive */
 	@media (max-width: 768px) {
 		.hero-content h1 {
 			font-size: 2rem;
@@ -254,6 +294,12 @@
 
 		.footer-admin-link {
 			margin-left: 0;
+		}
+
+		.hero-logo {
+			width: 80px;
+			height: 80px;
+			margin-bottom: 1rem;
 		}
 	}
 </style>

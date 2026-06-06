@@ -19,14 +19,52 @@
 		return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 	}
 
+	// ── Theme preset defaults ──────────────────────────────────────────────────
+	const DARK_PRESET = {
+		accentColor: '#e63946',
+		backgroundColor: '#1a1a2e',
+		textColor: '#eaeaea'
+	} as const;
+
+	const LIGHT_PRESET = {
+		accentColor: '#e63946',
+		backgroundColor: '#ffffff',
+		textColor: '#1a1a2e'
+	} as const;
+
 	// ── Theme values (reactive via $derived — updates if data.siteSettings changes) ──
-	let accentColor = $derived(data.siteSettings?.theme?.accentColor || '#e63946');
-	let backgroundColor = $derived(data.siteSettings?.theme?.backgroundColor || '#1a1a2e');
-	let textColor = $derived(data.siteSettings?.theme?.textColor || '#eaeaea');
+	const theme = $derived(data.siteSettings?.theme);
+	const preset = $derived(theme?.preset ?? 'dark');
+
+	// Resolve colors based on preset + any stored overrides
+	let accentColor = $derived(
+		theme?.accentColor ||
+			(preset === 'light' ? LIGHT_PRESET.accentColor : DARK_PRESET.accentColor)
+	);
+	let backgroundColor = $derived(
+		theme?.backgroundColor ||
+			(preset === 'light' ? LIGHT_PRESET.backgroundColor : DARK_PRESET.backgroundColor)
+	);
+	let textColor = $derived(
+		theme?.textColor ||
+			(preset === 'light' ? LIGHT_PRESET.textColor : DARK_PRESET.textColor)
+	);
 
 	// Secondary text: muted version based on background luminance
 	let textSecondary = $derived(
 		hexLuminance(backgroundColor) < 0.5 ? '#b0b0b0' : '#555555'
+	);
+
+	// Derived card/border colors for a polished look
+	let cardBackground = $derived(
+		preset === 'light'
+			? 'rgba(0, 0, 0, 0.03)'
+			: 'rgba(255, 255, 255, 0.05)'
+	);
+	let borderColor = $derived(
+		preset === 'light'
+			? 'rgba(0, 0, 0, 0.08)'
+			: 'rgba(255, 255, 255, 0.08)'
 	);
 
 	let cssVars = $derived(
@@ -35,6 +73,8 @@
 			`--color-background: ${backgroundColor}`,
 			`--color-text: ${textColor}`,
 			`--color-text-secondary: ${textSecondary}`,
+			`--color-card-background: ${cardBackground}`,
+			`--color-border: ${borderColor}`,
 			`--font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
 		].join('; ')
 	);

@@ -9,15 +9,28 @@ import { env } from '$env/dynamic/private';
  * Root layout server load — runs on every page navigation.
  *
  * Responsibilities:
- * 1. Load the Better Auth session (if any)
- * 2. Sync the authenticated user to our application `users` table
- * 3. Perform owner bootstrap: if user's Discord ID matches OWNER_DISCORD_ID,
+ * 1. Parse SUPER_ADMIN_DISCORD_IDS env var for super admin access
+ * 2. Load the Better Auth session (if any)
+ * 3. Sync the authenticated user to our application `users` table
+ * 4. Perform owner bootstrap: if user's Discord ID matches OWNER_DISCORD_ID,
  *    upsert a membership with role 'owner' for the current site
- * 4. Load the user's membership for the current site
- * 5. Return site, user, and membership data to all pages
+ * 5. Check if user is a super admin (bypasses site-scoped membership)
+ * 6. Load the user's membership for the current site
+ * 7. Return site, user, membership, and isSuperAdmin data to all pages
  */
 export const load: LayoutServerLoad = async (event) => {
 	const { site, siteSlug, siteSettings } = event.locals;
+
+	// ─── Super Admin IDs ────────────────────────────────────────────────────
+	// Parse SUPER_ADMIN_DISCORD_IDS env var (comma-separated list of Discord IDs).
+	// Users whose Discord ID is in this list bypass all site-scoped membership
+	// checks and get full admin access to any site.
+	const superAdminIds = (env.SUPER_ADMIN_DISCORD_IDS ?? '')
+		.split(',')
+		.map((id) => id.trim())
+		.filter(Boolean);
+
+	let isSuperAdmin = false;
 
 	// Get session from Better Auth
 	const session = await auth.api.getSession({
@@ -70,6 +83,13 @@ export const load: LayoutServerLoad = async (event) => {
 
 			appUser = fetchedUser ?? null;
 
+			// --- Super Admin Resolution ---
+			// Check BEFORE owner bootstrap so super admins always get the flag
+			// regardless of whether they also happen to be the owner.
+			if (appUser && superAdminIds.includes(discordAccount.accountId)) {
+				isSuperAdmin = true;
+			}
+
 			// --- Owner Bootstrap ---
 			// If this user's Discord ID matches OWNER_DISCORD_ID, ensure they
 			// have an 'owner' membership for the current site.
@@ -119,12 +139,14 @@ export const load: LayoutServerLoad = async (event) => {
 			}
 		: null;
 	event.locals.membership = membership;
+	event.locals.isSuperAdmin = isSuperAdmin;
 
 	return {
 		site,
 		siteSlug,
 		siteSettings,
 		user: event.locals.user,
-		membership
+		membership,
+		isSuperAdmin
 	};
 };

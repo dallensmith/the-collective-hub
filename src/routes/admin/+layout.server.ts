@@ -6,15 +6,16 @@ import type { LayoutServerLoad } from './$types';
  *
  * Checks:
  * 1. User is authenticated (locals.user exists)
- * 2. User has a membership for the current site
- * 3. User's membership role is one of: 'owner', 'admin', 'editor'
+ * 2. If user is a super admin → bypass all membership checks, grant full access
+ * 3. User has a membership for the current site
+ * 4. User's membership role is one of: 'owner', 'admin', 'editor'
  *
  * If any check fails, redirects to /login with an error message.
  *
  * Returns user profile data (Discord avatar URL, username) for the top bar display.
  */
 export const load: LayoutServerLoad = async (event) => {
-	const { user, membership, site } = event.locals;
+	const { user, membership, site, isSuperAdmin } = event.locals;
 
 	// Not authenticated
 	if (!user) {
@@ -30,6 +31,24 @@ export const load: LayoutServerLoad = async (event) => {
 			303,
 			`/login?error=${encodeURIComponent('No site context found. Check your SITE_SLUG environment variable.')}`
 		);
+	}
+
+	// Construct Discord avatar URL for the top bar
+	const discordAvatarUrl = user.discordAvatar
+		? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.discordAvatar}.png`
+		: `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discordId) >> 22) % 6}.png`;
+
+	// Super admins bypass all membership/role checks — grant immediate access
+	if (isSuperAdmin) {
+		return {
+			user: {
+				...user,
+				discordAvatarUrl
+			},
+			membership: null,
+			site,
+			isSuperAdmin: true
+		};
 	}
 
 	// Not a member
@@ -49,11 +68,6 @@ export const load: LayoutServerLoad = async (event) => {
 		);
 	}
 
-	// Construct Discord avatar URL for the top bar
-	const discordAvatarUrl = user.discordAvatar
-		? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.discordAvatar}.png`
-		: `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discordId) >> 22) % 6}.png`;
-
 	// User is authorized — return data for admin pages
 	return {
 		user: {
@@ -61,6 +75,7 @@ export const load: LayoutServerLoad = async (event) => {
 			discordAvatarUrl
 		},
 		membership,
-		site
+		site,
+		isSuperAdmin: false
 	};
 };

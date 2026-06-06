@@ -1,7 +1,14 @@
 <script lang="ts">
+	import type { PageData } from './$types';
+	import { page } from '$app/stores';
 	import { createAuthClient } from 'better-auth/svelte';
 
+	let { data }: { data: PageData } = $props();
+
 	const authClient = createAuthClient();
+
+	const siteName = $derived(data.site?.name ?? 'The Collective Hub');
+	const errorMessage = $derived($page.url.searchParams.get('error'));
 
 	async function handleDiscordLogin() {
 		await authClient.signIn.social({
@@ -12,12 +19,19 @@
 </script>
 
 <svelte:head>
-	<title>Login — The Collective Hub</title>
+	<title>Login — {siteName}</title>
 </svelte:head>
 
 <div class="login-container">
 	<h1>Login</h1>
-	<p>Sign in to access the admin panel and manage your site.</p>
+	<p>Sign in to manage {siteName}</p>
+
+	{#if errorMessage}
+		<div class="error-banner" role="alert">
+			<span class="error-icon">⚠</span>
+			<span class="error-text">{errorMessage}</span>
+		</div>
+	{/if}
 
 	<button class="discord-btn" onclick={handleDiscordLogin}>
 		<svg
@@ -83,6 +97,32 @@
 
 	.discord-btn:active {
 		background: #3c45a5;
+	}
+
+	.error-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		padding: 0.75rem 1.25rem;
+		margin-bottom: 1.25rem;
+		background: #fef2f2;
+		border: 1px solid #fecaca;
+		border-radius: 0.5rem;
+		color: #991b1b;
+		font-size: 0.9rem;
+		max-width: 420px;
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	.error-icon {
+		flex-shrink: 0;
+		font-size: 1.1rem;
+	}
+
+	.error-text {
+		text-align: left;
+		line-height: 1.4;
 	}
 
 	.help-text {

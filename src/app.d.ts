@@ -18,6 +18,7 @@ declare global {
 				email: string | null;
 			} | null;
 			membership: Membership | null;
+			isSuperAdmin: boolean;
 		}
 		// interface PageData {}
 		// interface PageState {}

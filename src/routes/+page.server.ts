@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { getCdnUrl } from '$lib/server/cdn';
 
 /**
  * Homepage server load — flattens site settings into simple props.
@@ -34,6 +35,11 @@ export const load: PageServerLoad = async (event) => {
 	const showNextEvent = homepage?.showNextEvent ?? false;
 	const showSchedule = homepage?.showSchedule ?? false;
 
+	// Resolve branding asset CDN keys to full URLs
+	const logoUrl = branding?.logoCdnKey ? getCdnUrl(branding.logoCdnKey) : null;
+	const backgroundUrl = branding?.backgroundCdnKey ? getCdnUrl(branding.backgroundCdnKey) : null;
+	const faviconUrl = branding?.faviconCdnKey ? getCdnUrl(branding.faviconCdnKey) : null;
+
 	return {
 		site,
 		heroTitle,
@@ -44,6 +50,9 @@ export const load: PageServerLoad = async (event) => {
 		showNextEvent,
 		showSchedule,
 		user,
-		membership
+		membership,
+		logoUrl,
+		backgroundUrl,
+		faviconUrl
 	};
 };
