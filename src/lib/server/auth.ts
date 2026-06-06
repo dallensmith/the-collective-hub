@@ -7,7 +7,10 @@ const { Pool } = pg;
 
 // ─── Environment Validation ─────────────────────────────────────────────────
 
-const isDev = !building && process.env.NODE_ENV !== 'production';
+// Use dev fallbacks during the build phase OR when NODE_ENV is not production.
+// During Vite's post-build analysis, `building` is still true but the server
+// modules are imported — we must not throw for missing secrets at build time.
+const isDev = building || process.env.NODE_ENV !== 'production';
 
 function requireEnv(key: string, hint?: string): string {
 	const value = (env as Record<string, string | undefined>)[key];
