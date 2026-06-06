@@ -1,12 +1,16 @@
 import type { PageServerLoad } from './$types';
 import { getCdnUrl } from '$lib/server/cdn';
+import { db } from '$lib/server/db';
+import { navLinks, socialLinks, events } from '$lib/server/db/schema';
+import { eq, asc, and, gte } from 'drizzle-orm';
 
 /**
  * Homepage server load — flattens site settings into simple props.
  *
- * All data originates from the root layout server (+layout.server.ts).
- * This loader calls event.parent() to access that cached data so we
- * make zero additional database queries here.
+ * Most data originates from the root layout server (+layout.server.ts).
+ * This loader calls event.parent() to access that cached data for
+ * branding/theme/homepage info. Nav links and social links are queried
+ * directly from the database since they aren't in layout data.
  *
  * Fallback chain for each prop ensures the page always has sensible
  * values, even when settings have never been configured by the owner.
@@ -40,6 +44,63 @@ export const load: PageServerLoad = async (event) => {
 	const backgroundUrl = branding?.backgroundCdnKey ? getCdnUrl(branding.backgroundCdnKey) : null;
 	const faviconUrl = branding?.faviconCdnKey ? getCdnUrl(branding.faviconCdnKey) : null;
 
+	// Query nav links and social links for the current site
+	let navLinkRows: typeof navLinks.$inferSelect[] = [];
+	let socialLinkRows: typeof socialLinks.$inferSelect[] = [];
+
+	if (site) {
+		navLinkRows = await db
+			.select()
+			.from(navLinks)
+			.where(eq(navLinks.siteId, site.id))
+			.orderBy(asc(navLinks.position), asc(navLinks.sortOrder));
+
+		socialLinkRows = await db
+			.select()
+			.from(socialLinks)
+			.where(eq(socialLinks.siteId, site.id))
+			.orderBy(asc(socialLinks.sortOrder));
+	}
+
+	// ─── Events queries ──────────────────────────────────────────────────
+
+	let nextEvent: typeof events.$inferSelect | null = null;
+	let upcomingEvents: typeof events.$inferSelect[] = [];
+
+	if (site) {
+		const now = new Date();
+
+		// Next upcoming published event
+		const [next] = await db
+			.select()
+			.from(events)
+			.where(
+				and(
+					eq(events.siteId, site.id),
+					eq(events.isPublished, true),
+					gte(events.startTime, now)
+				)
+			)
+			.orderBy(asc(events.startTime))
+			.limit(1);
+
+		nextEvent = next ?? null;
+
+		// Upcoming published events (next 6)
+		upcomingEvents = await db
+			.select()
+			.from(events)
+			.where(
+				and(
+					eq(events.siteId, site.id),
+					eq(events.isPublished, true),
+					gte(events.startTime, now)
+				)
+			)
+			.orderBy(asc(events.startTime))
+			.limit(6);
+	}
+
 	return {
 		site,
 		heroTitle,
@@ -53,6 +114,10 @@ export const load: PageServerLoad = async (event) => {
 		membership,
 		logoUrl,
 		backgroundUrl,
-		faviconUrl
+		faviconUrl,
+		navLinks: navLinkRows,
+		socialLinks: socialLinkRows,
+		nextEvent,
+		upcomingEvents
 	};
 };

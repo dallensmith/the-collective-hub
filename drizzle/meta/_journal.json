@@ -8,6 +8,20 @@
       "when": 1780717416486,
       "tag": "0000_moaning_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780726060837,
+      "tag": "0001_huge_arachne",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780726716892,
+      "tag": "0002_brief_proemial_gods",
+      "breakpoints": true
     }
   ]
 }
