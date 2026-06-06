@@ -253,7 +253,7 @@ Phases 2–5 are complete. The following were implemented:
 
 ## Current Status (2026-06-06)
 
-All Phase 1–5 deliverables are complete. Phase 6a (Discord Event Display) is implemented. The project is deployed and live via Coolify with Docker.
+All Phase 1–6 deliverables are complete. The project is deployed and live via Coolify with Docker.
 
 ### Completed
 
@@ -263,11 +263,12 @@ All Phase 1–5 deliverables are complete. Phase 6a (Discord Event Display) is i
 - ✅ Phase 4: Super Admin Dashboard — cross-site access, site creation, feature flags, deactivation
 - ✅ Phase 5: Admin Improvements — role management, preview mode (draft/publish), audit log, site cloning, feature flags
 - ✅ Phase 6a: Discord Event Display — REST client, cache, admin config, public homepage integration
+- ✅ Phase 6b: Discord Role Sync — `getGuildMember`/`getGuildRoles` in discord.ts, role sync in +layout.server.ts, admin settings UI, `/api/discord/roles` endpoint
+- ✅ Automated Testing — 60 smoke tests across 5 test files (Vitest): site-resolver, preview-token, CDN, admin auth guard, timezone
 
 ### Remaining Work
 
-- [ ] **Phase 6b: Discord Role Sync** — optional, requires `guilds.members.read` privileged intent on the Discord bot. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md:252-316) for the design.
-- [ ] **Automated Testing** — no automated tests exist yet. Smoke tests for auth flow, site resolution, admin CRUD, and CDN upload should be added before production use expands.
+No remaining work. The project is feature-complete for the MVP scope defined in the planning documents.
 
 ---
 

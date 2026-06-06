@@ -147,15 +147,22 @@ Phase 6 is broken into smaller, independently shippable sub-features.
 - [x] Admin events page: "Managed in Discord" banner when Discord events are active, native CRUD hidden
 - [x] Graceful fallback: no `DISCORD_BOT_TOKEN` → skip silently; bot not in server (403) → show empty with no error to visitors; rate limited (429) → retry after `Retry-After`; stale cache served on API failure
 
-### Phase 6b: Discord Role Sync (Optional)
-
-**Status:** ❌ Not implemented. Requires `guilds.members.read` privileged intent on the Discord bot.
+### Phase 6b: Discord Role Sync ✅ Implemented
 
 **Goal:** Auto-assign site membership roles based on a user's Discord server roles. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md:252-316) for detailed design.
 
+**Deliverables:**
+
+- [x] `getGuildMember()` and `getGuildRoles()` added to Discord REST client
+- [x] Role sync logic in `+layout.server.ts` — runs after owner bootstrap, never downgrades bootstrapped owner
+- [x] Admin settings UI: role sync enable toggle, role mapping list (Discord role → site role)
+- [x] `/api/discord/roles` proxy endpoint for fetching guild roles in admin dropdown
+- [x] Best-effort sync: Discord API failures never block login; `[role-sync]` prefixed logging
+- [x] Requires `guilds.members.read` privileged intent on the Discord bot (documented)
+
 ### Future Ideas (Not Yet Scoped)
 
-Do not build any of these until Phase 6a is solid, Phase 6b is decided, and a clear need is proven:
+Do not build any of these until Phases 1–6 are solid and a clear need is proven:
 
 - **Community features:** reviews, comments, discussion posts
 - **Calendar feeds:** iCal export, Google Calendar integration
@@ -179,8 +186,8 @@ flowchart TD
     P3 --> P5[Phase 5: Admin Improvements]
     P4 --> P5
     P5 --> P6a[Phase 6a: Discord Event Display]
-    P6a -.-> P6b[Phase 6b: Discord Role Sync (optional)]
+    P6a --> P6b[Phase 6b: Discord Role Sync]
     P6b -.-> P6f[Future Features]
 ```
 
-**Note:** Phase 1 now includes CDN + asset upload (previously Phase 3). Phase 4 (Super Admin Dashboard) can start as soon as Phase 1 is done — it's independent of branding and events. Phase 5 enhances both regular admin and super admin experiences. Phase 6a is complete; 6b is optional and pending.
+**Note:** Phase 1 now includes CDN + asset upload (previously Phase 3). Phase 4 (Super Admin Dashboard) can start as soon as Phase 1 is done — it's independent of branding and events. Phase 5 enhances both regular admin and super admin experiences. Both Phase 6a and 6b are complete. Phase 6b requires `guilds.members.read` privileged intent on the Discord bot.

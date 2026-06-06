@@ -42,7 +42,7 @@
 
 		const formData = new FormData();
 		try {
-			const res = await fetch(`${$page.url.pathname}?/discardAllDrafts`, {
+			const res = await fetch(`/admin?/discardAllDrafts`, {
 				method: 'POST',
 				body: formData
 			});

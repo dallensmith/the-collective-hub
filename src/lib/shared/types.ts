@@ -40,10 +40,18 @@ export interface LayoutSettings {
 	preset: 'standard';
 }
 
+/** Mapping from a Discord role ID to a site membership role */
+export interface DiscordRoleMapping {
+	discordRoleId: string;
+	siteRole: 'owner' | 'admin' | 'editor';
+}
+
 /** Discord integration settings */
 export interface DiscordSettings {
 	guildId: string | null;
 	eventsEnabled: boolean;
+	roleSyncEnabled?: boolean;
+	roleMappings?: DiscordRoleMapping[];
 }
 
 /** Feature flags controlling which features are enabled for a site */

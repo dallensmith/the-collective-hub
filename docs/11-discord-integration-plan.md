@@ -1,9 +1,9 @@
 # Discord Integration Plan — Phase 6
 
-**Status:** Phase 6a Implemented, 6b Pending
+**Status:** Phase 6a ✅ Implemented, 6b ✅ Implemented
 **Phase:** 6 — Discord Integration
 **Created:** 2026-06-06
-**Updated:** 2026-06-06 (6a implemented: Discord Event Display via REST API + cache)
+**Updated:** 2026-06-06 (6a: Discord Event Display via REST API + cache; 6b: Discord Role Sync with role mapping UI)
 
 ---
 
@@ -16,7 +16,7 @@ The Collective Hub already uses Discord for authentication (OAuth login via Bett
 | # | Feature | Complexity | Description | Status |
 |---|---------|-----------|-------------|--------|
 | 6a | Discord Event Display | Medium | Pull Scheduled Events from a Discord server via the existing bot, cache them, render on the public homepage. When connected, Discord events replace native site events. | ✅ Implemented |
-| 6b | Discord Role Sync | Medium-High | Auto-assign site membership roles based on a user's Discord server roles. (Optional follow-up) | ❌ Pending |
+| 6b | Discord Role Sync | Medium-High | Auto-assign site membership roles based on a user's Discord server roles. Requires `guilds.members.read` privileged intent on the bot. | ✅ Implemented |
 
 ### Key Design Decisions
 

@@ -17,21 +17,48 @@
 	let bgPickerOpen = $state(false);
 
 	// Currently selected logo/background CDN keys (bound to form)
-	let logoCdnKey = $state(data.branding?.logoCdnKey ?? '');
-	let backgroundCdnKey = $state(data.branding?.backgroundCdnKey ?? '');
+	let logoCdnKey = $state('');
+	$effect(() => {
+		logoCdnKey = data.branding?.logoCdnKey ?? '';
+	});
+	let backgroundCdnKey = $state('');
+	$effect(() => {
+		backgroundCdnKey = data.branding?.backgroundCdnKey ?? '';
+	});
 
 	// Favicon CDN key — initialised from saved branding, updated on upload
-	let faviconCdnKey = $state(data.branding?.faviconCdnKey ?? '');
+	let faviconCdnKey = $state('');
+	$effect(() => {
+		faviconCdnKey = data.branding?.faviconCdnKey ?? '';
+	});
 
 	// Theme values
-	let themePreset = $state(data.theme?.preset ?? 'dark');
-	let accentColor = $state(data.theme?.accentColor ?? '#e63946');
-	let backgroundColor = $state(data.theme?.backgroundColor ?? '#1a1a2e');
-	let textColor = $state(data.theme?.textColor ?? '#eaeaea');
+	let themePreset = $state('dark');
+	$effect(() => {
+		themePreset = data.theme?.preset ?? 'dark';
+	});
+	let accentColor = $state('#e63946');
+	$effect(() => {
+		accentColor = data.theme?.accentColor ?? '#e63946';
+	});
+	let backgroundColor = $state('#1a1a2e');
+	$effect(() => {
+		backgroundColor = data.theme?.backgroundColor ?? '#1a1a2e';
+	});
+	let textColor = $state('#eaeaea');
+	$effect(() => {
+		textColor = data.theme?.textColor ?? '#eaeaea';
+	});
 
 	// Site name & tagline (from branding, so pre-fill from current settings)
-	let siteName = $state(data.branding?.siteName ?? $page.data.site?.name ?? '');
-	let tagline = $state(data.branding?.tagline ?? '');
+	let siteName = $state('');
+	$effect(() => {
+		siteName = data.branding?.siteName ?? $page.data.site?.name ?? '';
+	});
+	let tagline = $state('');
+	$effect(() => {
+		tagline = data.branding?.tagline ?? '';
+	});
 
 	// Clear feedback when form action data changes (new submission)
 	$effect(() => {

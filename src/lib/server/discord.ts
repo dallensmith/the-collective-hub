@@ -11,6 +11,19 @@ import { env } from '$env/dynamic/private';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Discord guild member from GET /guilds/{guildId}/members/{userId} */
+interface DiscordGuildMember {
+	user: { id: string; username: string; discriminator: string };
+	roles: string[];
+}
+
+/** Discord role from GET /guilds/{guildId}/roles */
+interface DiscordRole {
+	id: string;
+	name: string;
+	color: number;
+}
+
 /** Raw scheduled event from Discord's API */
 interface DiscordRawEvent {
 	id: string;
@@ -194,6 +207,81 @@ export async function getGuild(
 		return await discordGet<{ id: string; name: string }>(`/guilds/${guildId}`);
 	} catch (err) {
 		console.error(`[discord] Failed to fetch guild ${guildId}:`, err);
+		return null;
+	}
+}
+
+/**
+ * Fetch a guild member by user ID.
+ *
+ * Calls GET /guilds/{guildId}/members/{userId} via the bot token.
+ * Returns the member object (user + roles) on success.
+ * Returns null if:
+ * - The bot is not in the server (403)
+ * - The user is not in the server (404)
+ * - The token is not configured
+ * - The bot lacks guilds.members.read intent (403 with specific error)
+ */
+export async function getGuildMember(
+	guildId: string,
+	userId: string
+): Promise<DiscordGuildMember | null> {
+	if (!env.DISCORD_BOT_TOKEN?.trim()) {
+		console.warn('[discord] DISCORD_BOT_TOKEN not set — skipping member fetch.');
+		return null;
+	}
+
+	try {
+		const member = await discordGet<DiscordGuildMember>(
+			`/guilds/${guildId}/members/${userId}`
+		);
+
+		if (!member) {
+			// 403 (bot not in server / missing intent) or 404 (user not in server)
+			console.warn(
+				`[discord] Cannot fetch member ${userId} in guild ${guildId}. Bot may not be in the server or lacks guilds.members.read intent.`
+			);
+			return null;
+		}
+
+		return member;
+	} catch (err) {
+		console.error(`[discord] Failed to fetch member ${userId} in guild ${guildId}:`, err);
+		return null;
+	}
+}
+
+/**
+ * Fetch all roles for a guild.
+ *
+ * Calls GET /guilds/{guildId}/roles via the bot token.
+ * Returns an array of role objects on success.
+ * Returns null if:
+ * - The bot is not in the server (403)
+ * - The guild doesn't exist (404)
+ * - The token is not configured
+ */
+export async function getGuildRoles(
+	guildId: string
+): Promise<DiscordRole[] | null> {
+	if (!env.DISCORD_BOT_TOKEN?.trim()) {
+		console.warn('[discord] DISCORD_BOT_TOKEN not set — skipping roles fetch.');
+		return null;
+	}
+
+	try {
+		const roles = await discordGet<DiscordRole[]>(`/guilds/${guildId}/roles`);
+
+		if (!roles) {
+			console.warn(
+				`[discord] Cannot fetch roles for guild ${guildId}. Bot may not be in the server.`
+			);
+			return null;
+		}
+
+		return roles;
+	} catch (err) {
+		console.error(`[discord] Failed to fetch roles for guild ${guildId}:`, err);
 		return null;
 	}
 }

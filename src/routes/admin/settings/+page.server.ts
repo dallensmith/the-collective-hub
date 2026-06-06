@@ -1,12 +1,12 @@
 import type { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import type { SiteSettingsData } from '$lib/shared/types';
+import type { SiteSettingsData, DiscordRoleMapping } from '$lib/shared/types';
 import { db } from '$lib/server/db';
 import { siteSettings } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { saveDraft, publishDrafts, discardDrafts, getMergedDraftSettings } from '$lib/server/settings-writer';
 import { logAuditEvent } from '$lib/server/audit-log';
-import { getGuild } from '$lib/server/discord';
+import { getGuild, getGuildRoles } from '$lib/server/discord';
 import { env } from '$env/dynamic/private';
 
 /**
@@ -23,7 +23,10 @@ export const load: PageServerLoad = async (event) => {
 			discordGuildId: '',
 			discordEventsEnabled: false,
 			discordGuildName: null,
-			discordConnectionError: false
+			discordConnectionError: false,
+			discordRoleSyncEnabled: false,
+			discordRoleMappings: [] as DiscordRoleMapping[],
+			discordGuildRoles: [] as { id: string; name: string; color: number }[]
 		};
 	}
 
@@ -37,6 +40,7 @@ export const load: PageServerLoad = async (event) => {
 	// Check Discord connection status if a guild ID is configured
 	let discordGuildName: string | null = null;
 	let discordConnectionError = false;
+	let discordGuildRoles: { id: string; name: string; color: number }[] = [];
 
 	if (discordGuildId) {
 		if (!env.DISCORD_BOT_TOKEN?.trim()) {
@@ -52,6 +56,16 @@ export const load: PageServerLoad = async (event) => {
 			} catch {
 				discordConnectionError = true;
 			}
+
+			// Fetch guild roles for the role sync dropdown (best-effort)
+			try {
+				const roles = await getGuildRoles(discordGuildId);
+				if (roles) {
+					discordGuildRoles = roles;
+				}
+			} catch {
+				// Roles fetch is best-effort; don't block page load
+			}
 		}
 	}
 
@@ -61,7 +75,10 @@ export const load: PageServerLoad = async (event) => {
 		discordGuildId,
 		discordEventsEnabled: discord?.eventsEnabled ?? false,
 		discordGuildName,
-		discordConnectionError
+		discordConnectionError,
+		discordRoleSyncEnabled: discord?.roleSyncEnabled ?? false,
+		discordRoleMappings: discord?.roleMappings ?? [],
+		discordGuildRoles
 	};
 };
 
@@ -74,7 +91,9 @@ async function buildMergedSettings(
 	siteName: string,
 	tagline: string,
 	discordGuildId: string,
-	discordEventsEnabled: boolean
+	discordEventsEnabled: boolean,
+	discordRoleSyncEnabled: boolean,
+	discordRoleMappings: DiscordRoleMapping[]
 ): Promise<Record<string, unknown>> {
 	const [row] = await db
 		.select({ settings: siteSettings.settings })
@@ -96,23 +115,49 @@ async function buildMergedSettings(
 		discord: {
 			...currentDiscord,
 			guildId: discordGuildId || null,
-			eventsEnabled: discordEventsEnabled
+			eventsEnabled: discordEventsEnabled,
+			roleSyncEnabled: discordRoleSyncEnabled,
+			roleMappings: discordRoleMappings
 		}
 	};
 }
 
 /** Form validation shared by saveDraft and publish */
-function validate(formData: FormData): { siteName: string; tagline: string; discordGuildId: string; discordEventsEnabled: boolean } | { error: string; field: string } {
+function validate(formData: FormData): {
+	siteName: string;
+	tagline: string;
+	discordGuildId: string;
+	discordEventsEnabled: boolean;
+	discordRoleSyncEnabled: boolean;
+	discordRoleMappings: DiscordRoleMapping[];
+} | { error: string; field: string } {
 	const siteName = formData.get('siteName')?.toString().trim() ?? '';
 	const tagline = formData.get('tagline')?.toString().trim() ?? '';
 	const discordGuildId = formData.get('discordGuildId')?.toString().trim() ?? '';
 	const discordEventsEnabled = formData.get('discordEventsEnabled') === 'on';
+	const discordRoleSyncEnabled = formData.get('discordRoleSyncEnabled') === 'on';
+
+	// Parse role mappings from hidden JSON field
+	let discordRoleMappings: DiscordRoleMapping[] = [];
+	const roleMappingsRaw = formData.get('discordRoleMappings')?.toString().trim();
+	if (roleMappingsRaw) {
+		try {
+			const parsed = JSON.parse(roleMappingsRaw);
+			if (Array.isArray(parsed)) {
+				discordRoleMappings = parsed.filter(
+					(m: DiscordRoleMapping) => m.discordRoleId && m.siteRole
+				);
+			}
+		} catch {
+			// Invalid JSON — ignore and use empty array
+		}
+	}
 
 	if (!siteName) {
 		return { error: 'Site name is required.', field: 'siteName' };
 	}
 
-	return { siteName, tagline, discordGuildId, discordEventsEnabled };
+	return { siteName, tagline, discordGuildId, discordEventsEnabled, discordRoleSyncEnabled, discordRoleMappings };
 }
 
 export const actions: Actions = {
@@ -126,7 +171,15 @@ export const actions: Actions = {
 		if ('error' in validation) return { success: false, ...validation };
 
 		try {
-			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline, validation.discordGuildId, validation.discordEventsEnabled);
+			const merged = await buildMergedSettings(
+				site.id,
+				validation.siteName,
+				validation.tagline,
+				validation.discordGuildId,
+				validation.discordEventsEnabled,
+				validation.discordRoleSyncEnabled,
+				validation.discordRoleMappings
+			);
 			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
 
 			logAuditEvent({
@@ -155,7 +208,15 @@ export const actions: Actions = {
 		if ('error' in validation) return { success: false, ...validation };
 
 		try {
-			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline, validation.discordGuildId, validation.discordEventsEnabled);
+			const merged = await buildMergedSettings(
+				site.id,
+				validation.siteName,
+				validation.tagline,
+				validation.discordGuildId,
+				validation.discordEventsEnabled,
+				validation.discordRoleSyncEnabled,
+				validation.discordRoleMappings
+			);
 			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
 
 			logAuditEvent({

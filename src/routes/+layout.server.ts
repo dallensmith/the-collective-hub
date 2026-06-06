@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { getCdnUrl } from '$lib/server/cdn';
 import { getSiteBySlug } from '$lib/server/site-resolver';
+import { getGuildMember } from '$lib/server/discord';
 
 /**
  * Root layout server load — runs on every page navigation.
@@ -110,6 +111,88 @@ export const load: LayoutServerLoad = async (event) => {
 							updatedAt: now
 						}
 					});
+			}
+
+			// --- Discord Role Sync ---
+			// Only if roleSync is enabled AND guildId is configured AND appUser exists
+			// AND the user is NOT the bootstrapped owner (OWNER_DISCORD_ID always wins)
+			const siteSettingsForRoleSync = event.locals.siteSettings;
+			if (
+				appUser &&
+				site &&
+				siteSettingsForRoleSync?.discord?.roleSyncEnabled &&
+				siteSettingsForRoleSync.discord.guildId &&
+				discordAccount.accountId !== env.OWNER_DISCORD_ID
+			) {
+				try {
+					const member = await getGuildMember(
+						siteSettingsForRoleSync.discord.guildId,
+						discordAccount.accountId
+					);
+
+					if (member) {
+						// Find the highest-priority matching role mapping
+						const matchedMapping = siteSettingsForRoleSync.discord.roleMappings?.find(
+							(m) => member.roles.includes(m.discordRoleId)
+						);
+
+						if (matchedMapping) {
+							// Upsert membership with the mapped role
+							await db
+								.insert(memberships)
+								.values({
+									siteId: site.id,
+									userId: appUser.id,
+									role: matchedMapping.siteRole
+								})
+								.onConflictDoUpdate({
+									target: [memberships.siteId, memberships.userId],
+									set: { role: matchedMapping.siteRole, updatedAt: new Date() }
+								});
+
+							console.log(
+								`[role-sync] User ${discordAccount.accountId} assigned role ${matchedMapping.siteRole} via Discord mapping ${matchedMapping.discordRoleId}`
+							);
+						} else {
+							// User has no matching Discord role — if they have a membership from a previous
+							// sync (not owner bootstrap), remove it
+							const [existingMembership] = await db
+								.select()
+								.from(memberships)
+								.where(
+									and(
+										eq(memberships.siteId, site.id),
+										eq(memberships.userId, appUser.id)
+									)
+								)
+								.limit(1);
+
+							if (existingMembership && existingMembership.role !== 'owner') {
+								await db
+									.delete(memberships)
+									.where(eq(memberships.id, existingMembership.id));
+
+								console.log(
+									`[role-sync] User ${discordAccount.accountId} had no matching Discord roles, membership removed`
+								);
+							}
+						}
+					} else {
+						console.warn('[role-sync] Role sync enabled but bot not in server or user not found');
+					}
+				} catch (err) {
+					// Role sync is best-effort — log warning, don't block login
+					console.warn('[role-sync] Failed to sync roles:', err);
+				}
+			}
+
+			// If the user IS the bootstrapped owner, we explicitly skip role sync
+			if (
+				appUser &&
+				discordAccount.accountId === env.OWNER_DISCORD_ID &&
+				siteSettingsForRoleSync?.discord?.roleSyncEnabled
+			) {
+				console.log('[role-sync] Role sync skipped: user is bootstrapped owner');
 			}
 
 			// --- Load Membership ---

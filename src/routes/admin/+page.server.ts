@@ -2,7 +2,8 @@ import { db } from '$lib/server/db';
 import { events, assets, navLinks, socialLinks, memberships, siteSettings, auditLog } from '$lib/server/db/schema';
 import { eq, and, sql, count, desc } from 'drizzle-orm';
 import { env } from '$env/dynamic/public';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+import { discardDrafts } from '$lib/server/settings-writer';
 
 /**
  * Load quick stats for the admin dashboard.
@@ -118,4 +119,25 @@ export const load: PageServerLoad = async (event) => {
 		isSuperAdmin,
 		recentActivity
 	};
+};
+
+/**
+ * Actions available from the admin dashboard.
+ * The discardAllDrafts action is referenced by the admin layout's draft bar
+ * via POST to /admin?/discardAllDrafts regardless of which sub-page the user is on.
+ */
+export const actions: Actions = {
+	/** Discard all drafts for the current site. */
+	discardAllDrafts: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
+
+		try {
+			await discardDrafts(site.id);
+			return { success: true, draftsDiscarded: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to discard drafts.';
+			return { success: false, error: message };
+		}
+	}
 };

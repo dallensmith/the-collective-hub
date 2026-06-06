@@ -52,8 +52,10 @@ export async function getSiteBySlug(
 /**
  * Simple deep merge: properties from `source` override those in `target`.
  * Nested objects are merged recursively. Arrays and primitives are replaced.
+ *
+ * Exported for testing.
  */
-function deepMerge(
+export function deepMerge(
 	target: Record<string, unknown>,
 	source: Record<string, unknown>
 ): Record<string, unknown> {
