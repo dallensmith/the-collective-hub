@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { assets } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { uploadToCdn, deleteFromCdn } from '$lib/server/cdn';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * POST /api/assets — Upload a new image asset.
@@ -61,6 +62,17 @@ export const POST: RequestHandler = async (event) => {
 			cdnKey: result.cdnKey
 		})
 		.returning();
+
+	// Log the asset upload to the audit trail
+	logAuditEvent({
+		siteId: site.id,
+		userId: event.locals.user?.discordId ?? 'unknown',
+		userEmail: event.locals.user?.email,
+		action: 'create',
+		entityType: 'asset',
+		entityId: record.id,
+		details: JSON.stringify({ filename: file.name, cdnKey: result.cdnKey, size: file.size })
+	});
 
 	return json({
 		id: record.id,

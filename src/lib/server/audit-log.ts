@@ -11,7 +11,7 @@ export async function logAuditEvent(params: {
 	userId: string;
 	userEmail?: string | null;
 	action: 'create' | 'update' | 'delete';
-	entityType: 'event' | 'asset' | 'link' | 'branding' | 'homepage' | 'settings' | 'team';
+	entityType: 'event' | 'asset' | 'link' | 'branding' | 'homepage' | 'settings' | 'team' | 'site';
 	entityId?: string;
 	details?: string;
 }) {

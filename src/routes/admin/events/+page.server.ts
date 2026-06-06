@@ -1,12 +1,14 @@
 import { db } from '$lib/server/db';
-import { events } from '$lib/server/db/schema';
+import { events, assets } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { getCdnUrl } from '$lib/server/cdn';
 import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load all events for the current site, ordered by startTime descending (newest first).
+ * Also loads assets for the image picker dropdown.
  * When Discord events are enabled, returns a flag so the page can show a notice
  * instead of the native event manager.
  */
@@ -14,7 +16,7 @@ export const load: PageServerLoad = async (event) => {
 	const { site } = event.locals;
 
 	if (!site) {
-		return { events: [], discordEventsEnabled: false, discordGuildId: null };
+		return { events: [], discordEventsEnabled: false, discordGuildId: null, assets: [] };
 	}
 
 	// Feature flag guard: events must be enabled
@@ -26,12 +28,29 @@ export const load: PageServerLoad = async (event) => {
 	const discordEventsEnabled = discordConfig?.eventsEnabled === true && discordConfig?.guildId != null;
 	const discordGuildId = discordConfig?.guildId ?? null;
 
+	// Load assets for the image picker (always load, even if Discord events enabled)
+	const assetRows = await db
+		.select()
+		.from(assets)
+		.where(eq(assets.siteId, site.id))
+		.orderBy(desc(assets.createdAt))
+		.limit(100);
+
+	const assetList = assetRows.map((a) => ({
+		id: a.id,
+		filename: a.filename,
+		cdnKey: a.cdnKey,
+		cdnUrl: getCdnUrl(a.cdnKey),
+		mimeType: a.mimeType
+	}));
+
 	// When Discord events are enabled, skip native event queries
 	if (discordEventsEnabled) {
 		return {
 			events: [],
 			discordEventsEnabled: true,
-			discordGuildId
+			discordGuildId,
+			assets: assetList
 		};
 	}
 
@@ -44,7 +63,8 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		events: eventRows,
 		discordEventsEnabled: false,
-		discordGuildId: null
+		discordGuildId: null,
+		assets: assetList
 	};
 };
 

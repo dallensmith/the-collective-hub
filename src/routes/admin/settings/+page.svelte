@@ -10,6 +10,19 @@
 	/** Feedback message shown after save attempt */
 	let feedback = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 
+	/** Discord connection status derived from server data */
+	let discordStatus = $derived.by(() => {
+		if (!data.discordGuildId) return null;
+		if (data.discordGuildName) {
+			return { type: 'connected' as const, label: `✅ Bot connected: ${data.discordGuildName}` };
+		}
+		if (data.discordConnectionError) {
+			// Check if it's because the token isn't set
+			return { type: 'error' as const, label: '❌ Bot not found in server' };
+		}
+		return { type: 'pending' as const, label: '⏳ Checking…' };
+	});
+
 	// Clear feedback when form action data changes (new submission)
 	$effect(() => {
 		if (form) {
@@ -138,6 +151,18 @@
 				<p class="form-help">
 					The Discord server (guild) ID to pull events from. Find this in Discord by enabling Developer Mode, then right-click your server icon → "Copy Server ID". The bot must be in your server.
 				</p>
+
+				<!-- Discord connection status -->
+				{#if discordStatus}
+					<div
+						class="discord-status"
+						class:discord-status--connected={discordStatus.type === 'connected'}
+						class:discord-status--error={discordStatus.type === 'error'}
+						class:discord-status--pending={discordStatus.type === 'pending'}
+					>
+						{discordStatus.label}
+					</div>
+				{/if}
 			</div>
 
 			<!-- Enable Discord Events -->
@@ -200,6 +225,52 @@
 		color: #666;
 		margin: 0 0 1.5rem;
 		font-size: 0.925rem;
+	}
+
+	/* ── Section Divider ─────────────────────────────────────────── */
+	.section-divider {
+		border-top: 1px solid #e0e0e6;
+		margin: 1.5rem 0;
+	}
+
+	.section-title {
+		font-size: 1.1rem;
+		font-weight: 600;
+		color: #1a1a2e;
+		margin: 0 0 0.25rem;
+	}
+
+	.section-desc {
+		color: #666;
+		margin: 0 0 1.25rem;
+		font-size: 0.85rem;
+	}
+
+	/* ── Discord Status ──────────────────────────────────────────── */
+	.discord-status {
+		margin-top: 0.5rem;
+		padding: 0.4rem 0.75rem;
+		border-radius: 5px;
+		font-size: 0.8rem;
+		font-weight: 500;
+	}
+
+	.discord-status--connected {
+		background: #daf5e0;
+		color: #1a6b30;
+		border: 1px solid #a3d9b1;
+	}
+
+	.discord-status--error {
+		background: #fde8e8;
+		color: #9b1c1c;
+		border: 1px solid #f4b2b2;
+	}
+
+	.discord-status--pending {
+		background: #fef3c7;
+		color: #92400e;
+		border: 1px solid #fcd34d;
 	}
 
 	/* ── Feedback ───────────────────────────────────────────────── */
@@ -276,6 +347,19 @@
 		font-size: 0.8rem;
 		color: #888;
 		margin: 0.3rem 0 0;
+	}
+
+	/* ── Checkbox ───────────────────────────────────────────────── */
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+	}
+
+	.checkbox-label input[type='checkbox'] {
+		width: 16px;
+		height: 16px;
 	}
 
 	/* ── Actions ────────────────────────────────────────────────── */

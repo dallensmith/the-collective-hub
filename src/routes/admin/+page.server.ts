@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
-import { events, assets, navLinks, socialLinks, memberships, siteSettings } from '$lib/server/db/schema';
-import { eq, and, sql, count } from 'drizzle-orm';
+import { events, assets, navLinks, socialLinks, memberships, siteSettings, auditLog } from '$lib/server/db/schema';
+import { eq, and, sql, count, desc } from 'drizzle-orm';
 import { env } from '$env/dynamic/public';
 import type { PageServerLoad } from './$types';
 
@@ -27,13 +27,14 @@ export const load: PageServerLoad = async (event) => {
 			isActive: false,
 			featureFlags: {},
 			currentUserRole: null,
-			isSuperAdmin: false
+			isSuperAdmin: false,
+			recentActivity: []
 		};
 	}
 
 	const now = new Date();
 
-	// Run all count queries in parallel
+	// Run all count queries in parallel, plus recent audit activity
 	const [
 		[{ value: totalEvents }],
 		[{ value: publishedEvents }],
@@ -42,7 +43,8 @@ export const load: PageServerLoad = async (event) => {
 		[{ value: totalNavLinks }],
 		[{ value: totalSocialLinks }],
 		[{ value: totalMembers }],
-		[settingsRow]
+		[settingsRow],
+		recentActivity
 	] = await Promise.all([
 		// All events (regardless of published status)
 		db
@@ -85,7 +87,14 @@ export const load: PageServerLoad = async (event) => {
 			.select({ id: siteSettings.id })
 			.from(siteSettings)
 			.where(eq(siteSettings.siteId, site.id))
-			.limit(1)
+			.limit(1),
+		// 5 most recent audit log entries for this site
+		db
+			.select()
+			.from(auditLog)
+			.where(eq(auditLog.siteId, site.id))
+			.orderBy(desc(auditLog.createdAt))
+			.limit(5)
 	]);
 
 	// Extract feature flags from site settings (default: all enabled if not configured)
@@ -106,6 +115,7 @@ export const load: PageServerLoad = async (event) => {
 		isActive: site.isActive,
 		featureFlags,
 		currentUserRole: membership?.role ?? null,
-		isSuperAdmin
+		isSuperAdmin,
+		recentActivity
 	};
 };

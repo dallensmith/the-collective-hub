@@ -5,12 +5,14 @@ import { getCdnUrl } from '$lib/server/cdn';
 import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
-import { saveDraft, publishDrafts, discardDrafts } from '$lib/server/settings-writer';
+import { saveDraft, publishDrafts, discardDrafts, getMergedDraftSettings } from '$lib/server/settings-writer';
 import { logAuditEvent } from '$lib/server/audit-log';
 
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
 /**
- * Load current branding and theme settings, plus the asset library for
- * logo/background selection.
+ * Load current branding and theme settings (with draft overlay), plus the asset
+ * library for logo/background selection.
  */
 export const load: PageServerLoad = async (event) => {
 	const { site } = event.locals;
@@ -28,13 +30,9 @@ export const load: PageServerLoad = async (event) => {
 		throw error(403, 'The Branding feature is disabled for this site.');
 	}
 
-	const [row] = await db
-		.select({ settings: siteSettings.settings })
-		.from(siteSettings)
-		.where(eq(siteSettings.siteId, site.id))
-		.limit(1);
-
-	const settings = (row?.settings ?? {}) as Partial<SiteSettingsData>;
+	// Load merged settings (live + draft overlay) so the form shows WYSIWYG
+	const mergedSettings = await getMergedDraftSettings(site.id);
+	const settings = (mergedSettings ?? {}) as Partial<SiteSettingsData>;
 	const branding = settings.branding ?? null;
 	const theme = settings.theme ?? null;
 
@@ -60,6 +58,28 @@ export const load: PageServerLoad = async (event) => {
 		assetList
 	};
 };
+
+/**
+ * Validate hex color values from form data.
+ * Returns null if valid, or an error object if invalid.
+ */
+function validateHexColors(formData: FormData): { error: string; field: string } | null {
+	const accentColor = formData.get('accentColor')?.toString().trim() ?? '#e63946';
+	const backgroundColor = formData.get('backgroundColor')?.toString().trim() ?? '#1a1a2e';
+	const textColor = formData.get('textColor')?.toString().trim() ?? '#eaeaea';
+
+	if (!HEX_COLOR_RE.test(accentColor)) {
+		return { error: 'Accent color must be a valid hex color (e.g. #ff5500).', field: 'accentColor' };
+	}
+	if (!HEX_COLOR_RE.test(backgroundColor)) {
+		return { error: 'Background color must be a valid hex color (e.g. #1a1a2e).', field: 'backgroundColor' };
+	}
+	if (!HEX_COLOR_RE.test(textColor)) {
+		return { error: 'Text color must be a valid hex color (e.g. #eaeaea).', field: 'textColor' };
+	}
+
+	return null;
+}
 
 /**
  * Build merged branding + theme settings from form data against published settings.
@@ -129,8 +149,13 @@ export const actions: Actions = {
 		const { site } = event.locals;
 		if (!site) return { success: false, error: 'No site context found.' };
 
+		const formData = await event.request.formData();
+
+		// Validate hex colors
+		const colorError = validateHexColors(formData);
+		if (colorError) return { success: false, ...colorError };
+
 		try {
-			const formData = await event.request.formData();
 			const merged = await buildMergedBrandingSettings(site.id, site.name, formData);
 			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
 
@@ -155,8 +180,13 @@ export const actions: Actions = {
 		const { site } = event.locals;
 		if (!site) return { success: false, error: 'No site context found.' };
 
+		const formData = await event.request.formData();
+
+		// Validate hex colors
+		const colorError = validateHexColors(formData);
+		if (colorError) return { success: false, ...colorError };
+
 		try {
-			const formData = await event.request.formData();
 			const merged = await buildMergedBrandingSettings(site.id, site.name, formData);
 			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
 

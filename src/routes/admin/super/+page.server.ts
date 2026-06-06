@@ -5,6 +5,7 @@ import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCdnUrl } from '$lib/server/cdn';
 import type { SiteSettingsData, FeatureFlags } from '$lib/shared/types';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Super Admin Dashboard — cross-site management for the system maintainer.
@@ -116,6 +117,16 @@ export const actions: Actions = {
 				.set({ isActive: !existing.isActive, updatedAt: new Date() })
 				.where(eq(sites.id, siteId));
 
+			logAuditEvent({
+				siteId,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: !existing.isActive ? 'create' : 'delete',
+				entityType: 'site',
+				entityId: siteId,
+				details: JSON.stringify({ isActive: !existing.isActive, siteName: existing.name })
+			});
+
 			return { success: true, action: 'toggleActive' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to toggle site active status.';
@@ -193,6 +204,16 @@ export const actions: Actions = {
 			await db.insert(siteSettings).values({
 				siteId: newSite.id,
 				settings: {}
+			});
+
+			logAuditEvent({
+				siteId: newSite.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'create',
+				entityType: 'site',
+				entityId: newSite.id,
+				details: JSON.stringify({ name, slug })
 			});
 
 			return { success: true, action: 'createSite', siteId: newSite.id };
@@ -393,6 +414,16 @@ export const actions: Actions = {
 					}
 				});
 
+			logAuditEvent({
+				siteId,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'settings',
+				entityId: siteId,
+				details: JSON.stringify({ featureFlags: updatedFlags })
+			});
+
 			return { success: true, action: 'saveFeatureFlags' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to save feature flags.';
@@ -503,6 +534,16 @@ export const actions: Actions = {
 				settings: clonedSettings
 			});
 
+			logAuditEvent({
+				siteId: newSite.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'create',
+				entityType: 'site',
+				entityId: newSite.id,
+				details: JSON.stringify({ name, slug, clonedFrom: sourceSiteId })
+			});
+
 			return { success: true, action: 'cloneSite', siteId: newSite.id };
 		} catch (err) {
 				const message = err instanceof Error ? err.message : 'Failed to clone site.';
@@ -548,6 +589,21 @@ export const actions: Actions = {
 					.update(sites)
 					.set({ isActive, updatedAt: new Date() })
 					.where(inArray(sites.id, ids));
+	
+				// Log audit for each affected site
+				const userId = event.locals.user?.discordId ?? 'unknown';
+				const userEmail = event.locals.user?.email;
+				for (const id of ids) {
+					logAuditEvent({
+						siteId: id,
+						userId,
+						userEmail,
+						action: isActive ? 'create' : 'delete',
+						entityType: 'site',
+						entityId: id,
+						details: JSON.stringify({ isActive, bulkOperation: true })
+					});
+				}
 	
 				return { success: true, action: 'bulkToggleActive', count: ids.length };
 			} catch (err) {

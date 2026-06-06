@@ -49,6 +49,45 @@
 
 	/** Total links (nav + social) */
 	let totalLinks = $derived(stats.totalNavLinks + stats.totalSocialLinks);
+
+	/** Recent activity from audit log */
+	let recentActivity = $derived(data.recentActivity ?? []);
+
+	/** Format a timestamp for display */
+	function formatTime(ts: string | Date): string {
+		const d = typeof ts === 'string' ? new Date(ts) : ts;
+		return d.toLocaleString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+	}
+
+	/** Human-readable action label */
+	function actionLabel(action: string): string {
+		switch (action) {
+			case 'create': return 'Created';
+			case 'update': return 'Updated';
+			case 'delete': return 'Deleted';
+			default: return action;
+		}
+	}
+
+	/** Entity type label */
+	function entityLabel(entityType: string): string {
+		switch (entityType) {
+			case 'event': return 'event';
+			case 'asset': return 'asset';
+			case 'link': return 'link';
+			case 'branding': return 'branding';
+			case 'homepage': return 'homepage';
+			case 'settings': return 'settings';
+			case 'team': return 'team member';
+			case 'site': return 'site';
+			default: return entityType;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -88,6 +127,11 @@
 		<div class="status-card status-card--inactive">
 			<span class="status-indicator status-indicator--inactive"></span>
 			<span class="status-text">This site is currently deactivated.</span>
+		</div>
+	{:else if isActive && !siteUrl}
+		<div class="status-card status-card--warning">
+			<span class="status-indicator status-indicator--warning"></span>
+			<span class="status-text">⚠️ PUBLIC_SITE_URL not configured. Set it in your environment variables.</span>
 		</div>
 	{/if}
 
@@ -205,11 +249,33 @@
 		</div>
 	</div>
 
-	<!-- Recent Activity Placeholder -->
+	<!-- Recent Activity -->
 	<div class="activity-section">
 		<h3 class="section-title">Recent Activity</h3>
-		<div class="activity-placeholder">
-			<p>📋 Recent activity will appear here once the audit log feature is enabled.</p>
+		{#if recentActivity.length > 0}
+			<div class="activity-list">
+				{#each recentActivity as entry}
+					<div class="activity-item">
+						<span class="activity-icon">
+							{entry.action === 'create' ? '➕' : entry.action === 'delete' ? '🗑️' : '✏️'}
+						</span>
+						<span class="activity-body">
+							<strong>{actionLabel(entry.action)}</strong> {entityLabel(entry.entityType)}
+							{#if entry.userEmail}
+								<span class="activity-user">by {entry.userEmail}</span>
+							{/if}
+						</span>
+						<span class="activity-time">{formatTime(entry.createdAt)}</span>
+					</div>
+				{/each}
+			</div>
+		{:else}
+			<div class="activity-placeholder">
+				<p>📋 No recent activity.</p>
+			</div>
+		{/if}
+		<div class="activity-footer">
+			<a href="/admin/audit-log" class="view-all-link">View all →</a>
 		</div>
 	</div>
 </div>
@@ -281,6 +347,12 @@
 		color: #92400e;
 	}
 
+	.status-card--warning {
+		background: #fef3c7;
+		border: 1px solid #fcd34d;
+		color: #92400e;
+	}
+
 	.status-indicator {
 		width: 10px;
 		height: 10px;
@@ -295,6 +367,11 @@
 
 	.status-indicator--inactive {
 		background: #92400e;
+	}
+
+	.status-indicator--warning {
+		background: #f59e0b;
+		box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
 	}
 
 	.status-text {
@@ -464,9 +541,51 @@
 		line-height: 1.35;
 	}
 
-	/* ── Activity Placeholder ────────────────────────────────────── */
+	/* ── Activity Section ────────────────────────────────────────── */
 	.activity-section {
 		margin-bottom: 1.5rem;
+	}
+
+	.activity-list {
+		background: #fff;
+		border: 1px solid #e0e0e6;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.activity-item {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-bottom: 1px solid #f0f0f3;
+		font-size: 0.85rem;
+	}
+
+	.activity-item:last-child {
+		border-bottom: none;
+	}
+
+	.activity-icon {
+		flex-shrink: 0;
+		font-size: 1rem;
+	}
+
+	.activity-body {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.activity-user {
+		color: #888;
+		font-size: 0.8rem;
+	}
+
+	.activity-time {
+		flex-shrink: 0;
+		color: #aaa;
+		font-size: 0.775rem;
+		white-space: nowrap;
 	}
 
 	.activity-placeholder {
@@ -481,6 +600,22 @@
 		margin: 0;
 		font-size: 0.875rem;
 		color: #999;
+	}
+
+	.activity-footer {
+		margin-top: 0.5rem;
+		text-align: right;
+	}
+
+	.view-all-link {
+		font-size: 0.825rem;
+		color: #58a6ff;
+		text-decoration: none;
+		font-weight: 500;
+	}
+
+	.view-all-link:hover {
+		text-decoration: underline;
 	}
 
 	/* ── Responsive ──────────────────────────────────────────────── */

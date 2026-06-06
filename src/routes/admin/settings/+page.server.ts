@@ -4,35 +4,64 @@ import type { SiteSettingsData } from '$lib/shared/types';
 import { db } from '$lib/server/db';
 import { siteSettings } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { saveDraft, publishDrafts, discardDrafts } from '$lib/server/settings-writer';
+import { saveDraft, publishDrafts, discardDrafts, getMergedDraftSettings } from '$lib/server/settings-writer';
 import { logAuditEvent } from '$lib/server/audit-log';
+import { getGuild } from '$lib/server/discord';
+import { env } from '$env/dynamic/private';
 
 /**
- * Load current site name and tagline from the siteSettings JSON blob.
+ * Load current site name, tagline, Discord settings, and connection status.
  * Falls back to the site's base name and empty tagline if no settings exist yet.
  */
 export const load: PageServerLoad = async (event) => {
 	const { site } = event.locals;
 
 	if (!site) {
-		return { siteName: '', tagline: '', discordGuildId: '', discordEventsEnabled: false };
+		return {
+			siteName: '',
+			tagline: '',
+			discordGuildId: '',
+			discordEventsEnabled: false,
+			discordGuildName: null,
+			discordConnectionError: false
+		};
 	}
 
-	const [row] = await db
-		.select({ settings: siteSettings.settings })
-		.from(siteSettings)
-		.where(eq(siteSettings.siteId, site.id))
-		.limit(1);
-
-	const settings = (row?.settings ?? {}) as Partial<SiteSettingsData>;
+	// Load merged settings (live + draft overlay) so the form shows WYSIWYG
+	const mergedSettings = await getMergedDraftSettings(site.id);
+	const settings = (mergedSettings ?? {}) as Partial<SiteSettingsData>;
 	const branding = settings.branding;
 	const discord = settings.discord;
+	const discordGuildId = discord?.guildId ?? '';
+
+	// Check Discord connection status if a guild ID is configured
+	let discordGuildName: string | null = null;
+	let discordConnectionError = false;
+
+	if (discordGuildId) {
+		if (!env.DISCORD_BOT_TOKEN?.trim()) {
+			discordConnectionError = true;
+		} else {
+			try {
+				const guild = await getGuild(discordGuildId);
+				if (guild) {
+					discordGuildName = guild.name;
+				} else {
+					discordConnectionError = true;
+				}
+			} catch {
+				discordConnectionError = true;
+			}
+		}
+	}
 
 	return {
 		siteName: branding?.siteName || site.name,
 		tagline: branding?.tagline || '',
-		discordGuildId: discord?.guildId ?? '',
-		discordEventsEnabled: discord?.eventsEnabled ?? false
+		discordGuildId,
+		discordEventsEnabled: discord?.eventsEnabled ?? false,
+		discordGuildName,
+		discordConnectionError
 	};
 };
 

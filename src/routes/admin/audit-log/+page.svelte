@@ -7,6 +7,11 @@
 	/** Current filter value derived from data */
 	let currentFilter = $derived(data.currentFilter ?? '');
 
+	/** Pagination info */
+	let currentPage = $derived(data.page ?? 1);
+	let totalPages = $derived(data.totalPages ?? 1);
+	let totalCount = $derived(data.totalCount ?? 0);
+
 	/** Entity type filter options */
 	const entityTypes = [
 		{ value: '', label: 'All Types' },
@@ -16,10 +21,11 @@
 		{ value: 'branding', label: 'Branding' },
 		{ value: 'homepage', label: 'Homepage' },
 		{ value: 'settings', label: 'Settings' },
-		{ value: 'team', label: 'Team' }
+		{ value: 'team', label: 'Team' },
+		{ value: 'site', label: 'Site' }
 	];
 
-	/** Navigate with a new filter value */
+	/** Navigate with a new filter value (resets to page 1) */
 	function applyFilter(value: string) {
 		const url = new URL($page.url);
 		if (value) {
@@ -27,12 +33,24 @@
 		} else {
 			url.searchParams.delete('filter');
 		}
+		url.searchParams.delete('page');
 		window.location.href = url.toString();
 	}
 
-	/** Format a timestamp for display */
-	function formatTimestamp(isoStr: string): string {
-		const d = new Date(isoStr);
+	/** Navigate to a specific page */
+	function goToPage(p: number) {
+		const url = new URL($page.url);
+		if (p <= 1) {
+			url.searchParams.delete('page');
+		} else {
+			url.searchParams.set('page', String(p));
+		}
+		window.location.href = url.toString();
+	}
+
+	/** Format a timestamp for display (accepts Date or string from drizzle) */
+	function formatTimestamp(isoStr: string | Date): string {
+		const d = typeof isoStr === 'string' ? new Date(isoStr) : isoStr;
 		return d.toLocaleString('en-US', {
 			month: 'short',
 			day: 'numeric',
@@ -92,7 +110,7 @@
 				<option value={et.value}>{et.label}</option>
 			{/each}
 		</select>
-		<span class="filter-count">{data.entries.length} entr{data.entries.length === 1 ? 'y' : 'ies'}</span>
+		<span class="filter-count">{totalCount} entr{totalCount === 1 ? 'y' : 'ies'}</span>
 	</div>
 
 	<!-- Audit Log Table -->
@@ -138,6 +156,29 @@
 					{/each}
 				</tbody>
 			</table>
+		</div>
+
+		<!-- Pagination Controls -->
+		<div class="pagination">
+			<div class="pagination-info">
+				Page {currentPage} of {totalPages}
+			</div>
+			<div class="pagination-controls">
+				<button
+					class="pagination-btn"
+					disabled={currentPage <= 1}
+					onclick={() => goToPage(currentPage - 1)}
+				>
+					← Previous
+				</button>
+				<button
+					class="pagination-btn"
+					disabled={currentPage >= totalPages}
+					onclick={() => goToPage(currentPage + 1)}
+				>
+					Next →
+				</button>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -341,6 +382,53 @@
 		color: #721c24;
 	}
 
+	/* ── Pagination ──────────────────────────────────────────────── */
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 1rem;
+		padding: 0.75rem 1rem;
+		background: #fff;
+		border: 1px solid #e0e0e6;
+		border-radius: 8px;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.pagination-info {
+		font-size: 0.85rem;
+		color: #666;
+		font-weight: 500;
+	}
+
+	.pagination-controls {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.pagination-btn {
+		padding: 0.4rem 0.9rem;
+		font-size: 0.825rem;
+		font-weight: 500;
+		color: #1a1a2e;
+		background: #f5f5f7;
+		border: 1px solid #d0d0d6;
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.pagination-btn:hover:not(:disabled) {
+		background: #e8e8ec;
+		border-color: #b0b0b6;
+	}
+
+	.pagination-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
 	/* ── Responsive ──────────────────────────────────────────────── */
 	@media (max-width: 768px) {
 		.filter-bar {
@@ -359,6 +447,16 @@
 
 		.cell-details {
 			max-width: 150px;
+		}
+
+		.pagination {
+			flex-direction: column;
+			align-items: stretch;
+			text-align: center;
+		}
+
+		.pagination-controls {
+			justify-content: center;
 		}
 	}
 </style>

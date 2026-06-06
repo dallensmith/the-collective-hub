@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
 	import { assets } from '$app/paths';
+	import { page } from '$app/stores';
 
 	/** Exit preview mode by calling the DELETE endpoint then reloading */
 	async function exitPreview() {
@@ -10,6 +11,18 @@
 	}
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
+	/** Derive branding info for SEO tags */
+	const branding = $derived(data.siteSettings?.branding);
+	const siteName = $derived(branding?.siteName ?? data.site?.name ?? 'The Collective Hub');
+	const pageDescription = $derived(
+		branding?.tagline ?? `Welcome to ${siteName}`
+	);
+	const logoUrl = $derived(branding?.logoCdnKey
+		? `/api/assets/${branding.logoCdnKey}`
+		: null
+	);
+	const currentPath = $derived($page.url.pathname);
 
 	/**
 	 * Compute the relative luminance of a hex color (WCAG).
@@ -88,25 +101,35 @@
 </script>
 
 <svelte:head>
+	<meta name="description" content={pageDescription} />
+	<meta property="og:title" content={siteName} />
+	<meta property="og:description" content={pageDescription} />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={currentPath} />
+	{#if logoUrl}
+		<meta property="og:image" content={logoUrl} />
+	{/if}
+	<meta name="twitter:card" content="summary_large_image" />
+
 	{#if data.faviconUrl}
 		<link rel="icon" href={data.faviconUrl} />
 	{:else}
 		<link rel="icon" href="{assets}favicon.png" />
-		{/if}
-	</svelte:head>
-	
-	<!-- Preview Mode Banner (shown site-wide when an admin is previewing drafts) -->
-	{#if data.isPreviewing}
-		<div class="preview-banner">
-			<span class="preview-banner-icon">🔍</span>
-			<span class="preview-banner-text">Preview Mode — viewing unpublished changes.</span>
-			<button class="preview-banner-exit" onclick={exitPreview}>
-				Exit Preview
-			</button>
-		</div>
 	{/if}
-	
-	<div class="site-root" style={cssVars}>
+</svelte:head>
+
+<!-- Preview Mode Banner (shown site-wide when an admin is previewing drafts) -->
+{#if data.isPreviewing}
+	<div class="preview-banner">
+		<span class="preview-banner-icon">🔍</span>
+		<span class="preview-banner-text">Preview Mode — viewing unpublished changes.</span>
+		<button class="preview-banner-exit" onclick={exitPreview}>
+			Exit Preview
+		</button>
+	</div>
+{/if}
+
+<div class="site-root" style={cssVars}>
 	{@render children()}
 </div>
 

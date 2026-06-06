@@ -131,12 +131,33 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ---
 
-## Phase 6: Future (Optional, Not Planned in Detail)
+## Phase 6: Discord Integration & Future Features
 
-These are ideas for later. Do not build any of these until Phases 1-5 are solid.
+Phase 6 is broken into smaller, independently shippable sub-features.
+
+### Phase 6a: Discord Event Display  ✅ Implemented
+
+**Goal:** Pull Discord Scheduled Events from a connected server via the existing bot and display them on the public site, replacing native events when Discord is connected. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md) for the full design.
+
+**Deliverables:**
+
+- [x] Discord REST client with in-memory cache (`src/lib/server/discord.ts`) — fetches scheduled events, caches for 60s, handles rate limits and errors
+- [x] Admin settings: guild ID input, enable toggle, bot connection status indicator
+- [x] Public homepage: fetches Discord events when connected, normalizes to same display shape as native events, shows "via Discord" attribution
+- [x] Admin events page: "Managed in Discord" banner when Discord events are active, native CRUD hidden
+- [x] Graceful fallback: no `DISCORD_BOT_TOKEN` → skip silently; bot not in server (403) → show empty with no error to visitors; rate limited (429) → retry after `Retry-After`; stale cache served on API failure
+
+### Phase 6b: Discord Role Sync (Optional)
+
+**Status:** ❌ Not implemented. Requires `guilds.members.read` privileged intent on the Discord bot.
+
+**Goal:** Auto-assign site membership roles based on a user's Discord server roles. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md:252-316) for detailed design.
+
+### Future Ideas (Not Yet Scoped)
+
+Do not build any of these until Phase 6a is solid, Phase 6b is decided, and a clear need is proven:
 
 - **Community features:** reviews, comments, discussion posts
-- **Discord integration:** server widget, event sync, role sync
 - **Calendar feeds:** iCal export, Google Calendar integration
 - **AI tools:** content suggestions, event descriptions, semantic search (pgvector)
 - **Advanced theming:** multiple layout presets, custom CSS per site
@@ -157,7 +178,9 @@ flowchart TD
     P1 --> P4[Phase 4: Super Admin Dashboard]
     P3 --> P5[Phase 5: Admin Improvements]
     P4 --> P5
-    P5 --> P6[Phase 6: Future Features]
+    P5 --> P6a[Phase 6a: Discord Event Display]
+    P6a -.-> P6b[Phase 6b: Discord Role Sync (optional)]
+    P6b -.-> P6f[Future Features]
 ```
 
-**Note:** Phase 1 now includes CDN + asset upload (previously Phase 3). Phase 4 (Super Admin Dashboard) can start as soon as Phase 1 is done — it's independent of branding and events. Phase 5 enhances both regular admin and super admin experiences.
+**Note:** Phase 1 now includes CDN + asset upload (previously Phase 3). Phase 4 (Super Admin Dashboard) can start as soon as Phase 1 is done — it's independent of branding and events. Phase 5 enhances both regular admin and super admin experiences. Phase 6a is complete; 6b is optional and pending.

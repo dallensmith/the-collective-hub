@@ -3,6 +3,7 @@ import { memberships, users } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 const rolePriority: Record<string, number> = {
 	owner: 0,
@@ -150,6 +151,16 @@ export const actions: Actions = {
 				role: role as 'admin' | 'editor'
 			});
 
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'create',
+				entityType: 'team',
+				entityId: targetUser.id,
+				details: JSON.stringify({ role, targetDiscordId: targetUser.discordId })
+			});
+
 			/** Build Discord avatar URL */
 			function avatarUrl(dId: string, avatarHash: string | null): string {
 				if (avatarHash) {
@@ -245,6 +256,16 @@ export const actions: Actions = {
 				.set({ role: newRole as 'admin' | 'editor', updatedAt: new Date() })
 				.where(eq(memberships.id, membershipId));
 
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'team',
+				entityId: targetMembership.userId,
+				details: JSON.stringify({ newRole, membershipId })
+			});
+
 			return { success: true, action: 'changeRole' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to change role.';
@@ -310,6 +331,16 @@ export const actions: Actions = {
 
 		try {
 			await db.delete(memberships).where(eq(memberships.id, membershipId));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'delete',
+				entityType: 'team',
+				entityId: targetMembership.userId,
+				details: JSON.stringify({ membershipId, removedRole: targetMembership.role })
+			});
 
 			return { success: true, action: 'removeMember' };
 		} catch (err) {

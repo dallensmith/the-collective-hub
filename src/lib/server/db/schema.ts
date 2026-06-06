@@ -224,7 +224,7 @@ export const auditLog = pgTable(
 	'audit_log',
 	{
 		id: text('id').primaryKey(), // UUID
-		siteId: text('site_id')
+		siteId: uuid('site_id')
 			.notNull()
 			.references(() => sites.id, { onDelete: 'cascade' }),
 		userId: text('user_id').notNull(), // Discord user ID (not a DB FK since users are external)

@@ -1,8 +1,9 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect, type Actions } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { siteSettings } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { discardDrafts } from '$lib/server/settings-writer';
 
 /**
  * Admin auth guard — runs on every /admin/* request.
@@ -113,4 +114,23 @@ export const load: LayoutServerLoad = async (event) => {
 		featureFlags,
 		hasDrafts
 	};
+};
+
+/**
+ * Layout-level actions available from any /admin/* page.
+ */
+export const actions: Actions = {
+	/** Discard all drafts for the current site — works from any admin page. */
+	discardAllDrafts: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
+
+		try {
+			await discardDrafts(site.id);
+			return { success: true, draftsDiscarded: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to discard drafts.';
+			return { success: false, error: message };
+		}
+	}
 };

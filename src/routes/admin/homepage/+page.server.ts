@@ -4,11 +4,11 @@ import { eq } from 'drizzle-orm';
 import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
-import { saveDraft, publishDrafts, discardDrafts } from '$lib/server/settings-writer';
+import { saveDraft, publishDrafts, discardDrafts, getMergedDraftSettings } from '$lib/server/settings-writer';
 import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
- * Load current homepage settings from siteSettings.settings.homepage JSON.
+ * Load current homepage settings from merged (live + draft) settings.
  * Returns flattened props with sensible defaults.
  */
 export const load: PageServerLoad = async (event) => {
@@ -31,13 +31,9 @@ export const load: PageServerLoad = async (event) => {
 		throw error(403, 'The Homepage Editor feature is disabled for this site.');
 	}
 
-	const [row] = await db
-		.select({ settings: siteSettings.settings })
-		.from(siteSettings)
-		.where(eq(siteSettings.siteId, site.id))
-		.limit(1);
-
-	const settings = (row?.settings ?? {}) as Partial<SiteSettingsData>;
+	// Load merged settings (live + draft overlay) so the form shows WYSIWYG
+	const mergedSettings = await getMergedDraftSettings(site.id);
+	const settings = (mergedSettings ?? {}) as Partial<SiteSettingsData>;
 	const homepage = settings.homepage;
 
 	return {

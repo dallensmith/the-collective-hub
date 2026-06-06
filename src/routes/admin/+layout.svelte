@@ -36,15 +36,13 @@
 		}
 	}
 
-	/** Discard all drafts after confirmation */
+	/** Discard all drafts after confirmation — uses the layout-level discardAllDrafts action */
 	async function handleDiscardDrafts() {
 		if (!confirm('Discard all unpublished drafts? This cannot be undone.')) return;
 
-		const currentPath = $page.url.pathname;
-		// Submit to ?/discardDrafts on the current admin page
 		const formData = new FormData();
 		try {
-			const res = await fetch(`${currentPath}?/discardDrafts`, {
+			const res = await fetch(`${$page.url.pathname}?/discardAllDrafts`, {
 				method: 'POST',
 				body: formData
 			});
@@ -82,7 +80,6 @@
 	interface NavItem {
 		label: string;
 		href: string;
-		placeholder: boolean;
 	}
 
 	/** Feature flags from layout data (default: all enabled when unset) */
@@ -94,16 +91,16 @@
 	}
 
 	let navItems = $derived<NavItem[]>([
-		{ label: 'Dashboard', href: '/admin', placeholder: false },
-		{ label: 'Settings', href: '/admin/settings', placeholder: false },
-		...(flag('branding') ? [{ label: 'Branding', href: '/admin/branding', placeholder: false }] : []),
-		...(flag('homepageEditor') ? [{ label: 'Homepage', href: '/admin/homepage', placeholder: false }] : []),
-		...(flag('navLinks') || flag('socialLinks') ? [{ label: 'Links', href: '/admin/links', placeholder: false }] : []),
-		...(flag('events') ? [{ label: 'Events', href: '/admin/events', placeholder: false }] : []),
-		...(flag('assetLibrary') ? [{ label: 'Assets', href: '/admin/assets', placeholder: false }] : []),
-		...(data.isSuperAdmin ? [{ label: 'Super Admin', href: '/admin/super', placeholder: false }] : []),
-		{ label: 'Audit Log', href: '/admin/audit-log', placeholder: false },
-		{ label: 'Team', href: '/admin/team', placeholder: false }
+		{ label: 'Dashboard', href: '/admin' },
+		{ label: 'Settings', href: '/admin/settings' },
+		...(flag('branding') ? [{ label: 'Branding', href: '/admin/branding' }] : []),
+		...(flag('homepageEditor') ? [{ label: 'Homepage', href: '/admin/homepage' }] : []),
+		...(flag('navLinks') || flag('socialLinks') ? [{ label: 'Links', href: '/admin/links' }] : []),
+		...(flag('events') ? [{ label: 'Events', href: '/admin/events' }] : []),
+		...(flag('assetLibrary') ? [{ label: 'Assets', href: '/admin/assets' }] : []),
+		...(data.isSuperAdmin ? [{ label: 'Super Admin', href: '/admin/super' }] : []),
+		{ label: 'Audit Log', href: '/admin/audit-log' },
+		{ label: 'Team', href: '/admin/team' }
 	]);
 </script>
 
@@ -130,21 +127,14 @@
 			<ul>
 				{#each navItems as item}
 					<li>
-						{#if item.placeholder}
-							<span class="nav-link nav-link--placeholder" title="Coming in a later phase">
-								{item.label}
-								<span class="placeholder-badge">soon</span>
-							</span>
-						{:else}
-							<a
-								href={item.href}
-								class="nav-link"
-								class:nav-link--active={isActive(item.href)}
-								onclick={closeSidebar}
-							>
-								{item.label}
-							</a>
-						{/if}
+						<a
+							href={item.href}
+							class="nav-link"
+							class:nav-link--active={isActive(item.href)}
+							onclick={closeSidebar}
+						>
+							{item.label}
+						</a>
 					</li>
 				{/each}
 			</ul>
@@ -312,30 +302,6 @@
 		background: #1c2129;
 		color: #f0f6fc;
 		border-left-color: #58a6ff;
-	}
-
-	/* Placeholder nav items */
-	.nav-link--placeholder {
-		cursor: not-allowed;
-		opacity: 0.5;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.nav-link--placeholder:hover {
-		background: transparent;
-		color: #8b949e;
-	}
-
-	.placeholder-badge {
-		font-size: 0.65rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: #30363d;
-		color: #8b949e;
-		padding: 0.1rem 0.4rem;
-		border-radius: 3px;
 	}
 
 	.sidebar-footer {

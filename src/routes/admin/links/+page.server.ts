@@ -118,6 +118,21 @@ export const actions: Actions = {
 		}
 
 		try {
+			// Verify site ownership before updating
+			const [existing] = await db
+				.select({ id: navLinks.id, siteId: navLinks.siteId })
+				.from(navLinks)
+				.where(eq(navLinks.id, id))
+				.limit(1);
+
+			if (!existing) {
+				return { success: false, error: 'Link not found.', action: 'updateNavLink' };
+			}
+
+			if (existing.siteId !== site.id) {
+				return { success: false, error: 'Not authorized to update this link.', action: 'updateNavLink' };
+			}
+
 			await db
 				.update(navLinks)
 				.set({ label, url, position, sortOrder, isExternal, updatedAt: new Date() })
@@ -251,6 +266,21 @@ export const actions: Actions = {
 		}
 
 		try {
+			// Verify site ownership before updating
+			const [existing] = await db
+				.select({ id: socialLinks.id, siteId: socialLinks.siteId })
+				.from(socialLinks)
+				.where(eq(socialLinks.id, id))
+				.limit(1);
+
+			if (!existing) {
+				return { success: false, error: 'Link not found.', action: 'updateSocialLink' };
+			}
+
+			if (existing.siteId !== site.id) {
+				return { success: false, error: 'Not authorized to update this link.', action: 'updateSocialLink' };
+			}
+
 			await db
 				.update(socialLinks)
 				.set({ platform, label, url, sortOrder, updatedAt: new Date() })

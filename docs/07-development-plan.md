@@ -6,7 +6,7 @@ This is a step-by-step build order for Phase 1 and beyond. Each step lists what 
 
 **Follow the order.** Each step builds on the previous one. Don't skip ahead.
 
-> **Progress update (2026-06-06):** Steps 1–14 are complete. Step 15 (Dockerize & Deploy) is the next action item.
+> **Progress update (2026-06-06):** Steps 1–15 are complete. The project is deployed and live.
 
 ---
 
@@ -251,11 +251,23 @@ Phases 2–5 are complete. The following were implemented:
 8. ✅ Feature flags system
 9. ✅ Discord Event Display (Phase 6a)
 
-## Remaining
+## Current Status (2026-06-06)
 
-- [ ] **Step 15: Dockerize and Deploy** — verify Dockerfile, set up first Coolify deployment
-- [ ] **Phase 6b: Discord Role Sync** — optional, requires `guilds.members.read` privileged intent
-- [ ] **Testing** — no automated tests exist yet
+All Phase 1–5 deliverables are complete. Phase 6a (Discord Event Display) is implemented. The project is deployed and live via Coolify with Docker.
+
+### Completed
+
+- ✅ Steps 1–15 (Phase 1: Foundation) — SvelteKit, Drizzle, Better Auth, CDN, asset upload, migration automation, Docker, deployment
+- ✅ Phase 2: Branding & Customization — branding page, theme editor, homepage editor, nav/social links
+- ✅ Phase 3: Events & Schedule — events CRUD, public rendering, timezone support
+- ✅ Phase 4: Super Admin Dashboard — cross-site access, site creation, feature flags, deactivation
+- ✅ Phase 5: Admin Improvements — role management, preview mode (draft/publish), audit log, site cloning, feature flags
+- ✅ Phase 6a: Discord Event Display — REST client, cache, admin config, public homepage integration
+
+### Remaining Work
+
+- [ ] **Phase 6b: Discord Role Sync** — optional, requires `guilds.members.read` privileged intent on the Discord bot. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md:252-316) for the design.
+- [ ] **Automated Testing** — no automated tests exist yet. Smoke tests for auth flow, site resolution, admin CRUD, and CDN upload should be added before production use expands.
 
 ---
 
