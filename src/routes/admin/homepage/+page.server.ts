@@ -1,12 +1,14 @@
 import { db } from '$lib/server/db';
 import { siteSettings } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import type { Actions } from '@sveltejs/kit';
+import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
+import { saveDraft, publishDrafts, discardDrafts, getMergedDraftSettings } from '$lib/server/settings-writer';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
- * Load current homepage settings from siteSettings.settings.homepage JSON.
+ * Load current homepage settings from merged (live + draft) settings.
  * Returns flattened props with sensible defaults.
  */
 export const load: PageServerLoad = async (event) => {
@@ -24,13 +26,14 @@ export const load: PageServerLoad = async (event) => {
 		};
 	}
 
-	const [row] = await db
-		.select({ settings: siteSettings.settings })
-		.from(siteSettings)
-		.where(eq(siteSettings.siteId, site.id))
-		.limit(1);
+	// Feature flag guard: homepageEditor must be enabled
+	if (event.locals.siteSettings?.featureFlags?.homepageEditor === false) {
+		throw error(403, 'The Homepage Editor feature is disabled for this site.');
+	}
 
-	const settings = (row?.settings ?? {}) as Partial<SiteSettingsData>;
+	// Load merged settings (live + draft overlay) so the form shows WYSIWYG
+	const mergedSettings = await getMergedDraftSettings(site.id);
+	const settings = (mergedSettings ?? {}) as Partial<SiteSettingsData>;
 	const homepage = settings.homepage;
 
 	return {
@@ -45,89 +48,141 @@ export const load: PageServerLoad = async (event) => {
 };
 
 /**
- * Form action: saves homepage content into siteSettings.settings.homepage JSON.
- * All fields are optional. If primaryButtonLink is provided, it must start with
- * http://, https://, or /.
+ * Build merged homepage settings from form data against published settings.
  */
-export const actions: Actions = {
-	default: async (event) => {
-		const { site } = event.locals;
+async function buildMergedHomepageSettings(
+	siteId: string,
+	formData: FormData
+): Promise<Record<string, unknown>> {
+	const heroTitle = formData.get('heroTitle')?.toString().trim() ?? '';
+	const heroSubtitle = formData.get('heroSubtitle')?.toString().trim() ?? '';
+	const aboutText = formData.get('aboutText')?.toString().trim() ?? '';
+	const primaryButtonText = formData.get('primaryButtonText')?.toString().trim() ?? '';
+	const primaryButtonLink = formData.get('primaryButtonLink')?.toString().trim() ?? '';
+	const showNextEvent = formData.get('showNextEvent') === 'on';
+	const showSchedule = formData.get('showSchedule') === 'on';
 
-		if (!site) {
-			return { success: false, error: 'No site context found.' };
-		}
+	const [row] = await db
+		.select({ settings: siteSettings.settings })
+		.from(siteSettings)
+		.where(eq(siteSettings.siteId, siteId))
+		.limit(1);
+
+	const currentSettings = (row?.settings ?? {}) as Record<string, unknown>;
+	const currentHomepage = (currentSettings.homepage ?? {}) as Record<string, unknown>;
+
+	const homepage = {
+		...currentHomepage,
+		heroTitle,
+		heroSubtitle,
+		aboutText,
+		primaryButtonText,
+		primaryButtonLink,
+		showNextEvent,
+		showSchedule
+	};
+
+	return {
+		...currentSettings,
+		homepage
+	};
+}
+
+/** Form validation shared by saveDraft and publish */
+function validateHomepage(formData: FormData): { heroTitle: string; heroSubtitle: string; aboutText: string; primaryButtonText: string; primaryButtonLink: string; showNextEvent: boolean; showSchedule: boolean } | { error: string; field: string } {
+	const primaryButtonLink = formData.get('primaryButtonLink')?.toString().trim() ?? '';
+
+	if (
+		primaryButtonLink &&
+		!primaryButtonLink.startsWith('http://') &&
+		!primaryButtonLink.startsWith('https://') &&
+		!primaryButtonLink.startsWith('/')
+	) {
+		return {
+			error: 'Primary button link must start with http://, https://, or /.',
+			field: 'primaryButtonLink'
+		};
+	}
+
+	const heroTitle = formData.get('heroTitle')?.toString().trim() ?? '';
+	const heroSubtitle = formData.get('heroSubtitle')?.toString().trim() ?? '';
+	const aboutText = formData.get('aboutText')?.toString().trim() ?? '';
+	const primaryButtonText = formData.get('primaryButtonText')?.toString().trim() ?? '';
+	const showNextEvent = formData.get('showNextEvent') === 'on';
+	const showSchedule = formData.get('showSchedule') === 'on';
+
+	return { heroTitle, heroSubtitle, aboutText, primaryButtonText, primaryButtonLink, showNextEvent, showSchedule };
+}
+
+export const actions: Actions = {
+	/** Save homepage changes as a draft — does not affect the live site. */
+	saveDraft: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
 
 		const formData = await event.request.formData();
-
-		const heroTitle = formData.get('heroTitle')?.toString().trim() ?? '';
-		const heroSubtitle = formData.get('heroSubtitle')?.toString().trim() ?? '';
-		const aboutText = formData.get('aboutText')?.toString().trim() ?? '';
-		const primaryButtonText = formData.get('primaryButtonText')?.toString().trim() ?? '';
-		const primaryButtonLink = formData.get('primaryButtonLink')?.toString().trim() ?? '';
-		const showNextEvent = formData.get('showNextEvent') === 'on';
-		const showSchedule = formData.get('showSchedule') === 'on';
-
-		// Validate primaryButtonLink if provided
-		if (
-			primaryButtonLink &&
-			!primaryButtonLink.startsWith('http://') &&
-			!primaryButtonLink.startsWith('https://') &&
-			!primaryButtonLink.startsWith('/')
-		) {
-			return {
-				success: false,
-				error: 'Primary button link must start with http://, https://, or /.',
-				field: 'primaryButtonLink'
-			};
-		}
+		const validation = validateHomepage(formData);
+		if ('error' in validation) return { success: false, ...validation };
 
 		try {
-			// Read current settings to preserve other keys (branding, theme, layout)
-			const [row] = await db
-				.select({ settings: siteSettings.settings })
-				.from(siteSettings)
-				.where(eq(siteSettings.siteId, site.id))
-				.limit(1);
+			const merged = await buildMergedHomepageSettings(site.id, formData);
+			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
 
-			const currentSettings = (row?.settings ?? {}) as Record<string, unknown>;
-			const currentHomepage = (currentSettings.homepage ?? {}) as Record<string, unknown>;
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'homepage',
+				details: 'Saved homepage draft'
+			});
 
-			// Merge homepage settings
-			const homepage = {
-				...currentHomepage,
-				heroTitle,
-				heroSubtitle,
-				aboutText,
-				primaryButtonText,
-				primaryButtonLink,
-				showNextEvent,
-				showSchedule
-			};
-
-			// Build final settings object preserving all other keys
-			const updatedSettings = {
-				...currentSettings,
-				homepage
-			};
-
-			// Upsert into siteSettings
-			await db
-				.insert(siteSettings)
-				.values({
-					siteId: site.id,
-					settings: updatedSettings
-				})
-				.onConflictDoUpdate({
-					target: siteSettings.siteId,
-					set: {
-						settings: updatedSettings,
-						updatedAt: new Date()
-					}
-				});
-
-			return { success: true };
+			return { success: true, draftSaved: true };
 		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Failed to save homepage settings.';
+			const message = err instanceof Error ? err.message : 'Failed to save draft.';
+			return { success: false, error: message };
+		}
+	},
+
+	/** Publish homepage changes to the live site, clearing any drafts. */
+	publish: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
+
+		const formData = await event.request.formData();
+		const validation = validateHomepage(formData);
+		if ('error' in validation) return { success: false, ...validation };
+
+		try {
+			const merged = await buildMergedHomepageSettings(site.id, formData);
+			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'homepage',
+				details: 'Published homepage changes'
+			});
+
+			return { success: true, published: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to publish homepage.';
+			return { success: false, error: message };
+		}
+	},
+
+	/** Discard all pending drafts for this site without publishing. */
+	discardDrafts: async (event) => {
+		const { site } = event.locals;
+		if (!site) return { success: false, error: 'No site context found.' };
+
+		try {
+			await discardDrafts(site.id);
+			return { success: true, draftsDiscarded: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to discard drafts.';
 			return { success: false, error: message };
 		}
 	}

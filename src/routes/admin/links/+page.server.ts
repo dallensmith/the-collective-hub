@@ -1,8 +1,9 @@
 import { db } from '$lib/server/db';
 import { navLinks, socialLinks } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
-import type { Actions } from '@sveltejs/kit';
+import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load nav links and social links for the current site.
@@ -12,6 +13,12 @@ export const load: PageServerLoad = async (event) => {
 
 	if (!site) {
 		return { navLinks: [], socialLinks: [] };
+	}
+
+	// Feature flag guard: at least one link feature must be enabled
+	const ff = event.locals.siteSettings?.featureFlags;
+	if (ff?.navLinks === false && ff?.socialLinks === false) {
+		throw error(403, 'The Links feature is disabled for this site.');
 	}
 
 	const navRows = await db
@@ -58,14 +65,30 @@ export const actions: Actions = {
 		}
 
 		try {
-			await db.insert(navLinks).values({
-				siteId: site.id,
-				label,
-				url,
-				position,
-				sortOrder,
-				isExternal
-			});
+			const [created] = await db
+				.insert(navLinks)
+				.values({
+					siteId: site.id,
+					label,
+					url,
+					position,
+					sortOrder,
+					isExternal
+				})
+				.returning({ id: navLinks.id });
+
+			if (created) {
+				logAuditEvent({
+					siteId: site.id,
+					userId: event.locals.user?.discordId ?? 'unknown',
+					userEmail: event.locals.user?.email,
+					action: 'create',
+					entityType: 'link',
+					entityId: created.id,
+					details: JSON.stringify({ label, url, position })
+				});
+			}
+
 			return { success: true, action: 'createNavLink' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to create nav link.';
@@ -95,10 +118,36 @@ export const actions: Actions = {
 		}
 
 		try {
+			// Verify site ownership before updating
+			const [existing] = await db
+				.select({ id: navLinks.id, siteId: navLinks.siteId })
+				.from(navLinks)
+				.where(eq(navLinks.id, id))
+				.limit(1);
+
+			if (!existing) {
+				return { success: false, error: 'Link not found.', action: 'updateNavLink' };
+			}
+
+			if (existing.siteId !== site.id) {
+				return { success: false, error: 'Not authorized to update this link.', action: 'updateNavLink' };
+			}
+
 			await db
 				.update(navLinks)
 				.set({ label, url, position, sortOrder, isExternal, updatedAt: new Date() })
 				.where(eq(navLinks.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'link',
+				entityId: id,
+				details: JSON.stringify({ label, url, position })
+			});
+
 			return { success: true, action: 'updateNavLink' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update nav link.';
@@ -128,6 +177,16 @@ export const actions: Actions = {
 			}
 
 			await db.delete(navLinks).where(eq(navLinks.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'delete',
+				entityType: 'link',
+				entityId: id
+			});
+
 			return { success: true, action: 'deleteNavLink' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to delete nav link.';
@@ -156,13 +215,29 @@ export const actions: Actions = {
 		}
 
 		try {
-			await db.insert(socialLinks).values({
-				siteId: site.id,
-				platform,
-				label,
-				url,
-				sortOrder
-			});
+			const [created] = await db
+				.insert(socialLinks)
+				.values({
+					siteId: site.id,
+					platform,
+					label,
+					url,
+					sortOrder
+				})
+				.returning({ id: socialLinks.id });
+
+			if (created) {
+				logAuditEvent({
+					siteId: site.id,
+					userId: event.locals.user?.discordId ?? 'unknown',
+					userEmail: event.locals.user?.email,
+					action: 'create',
+					entityType: 'link',
+					entityId: created.id,
+					details: JSON.stringify({ platform, label, url })
+				});
+			}
+
 			return { success: true, action: 'createSocialLink' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to create social link.';
@@ -191,10 +266,36 @@ export const actions: Actions = {
 		}
 
 		try {
+			// Verify site ownership before updating
+			const [existing] = await db
+				.select({ id: socialLinks.id, siteId: socialLinks.siteId })
+				.from(socialLinks)
+				.where(eq(socialLinks.id, id))
+				.limit(1);
+
+			if (!existing) {
+				return { success: false, error: 'Link not found.', action: 'updateSocialLink' };
+			}
+
+			if (existing.siteId !== site.id) {
+				return { success: false, error: 'Not authorized to update this link.', action: 'updateSocialLink' };
+			}
+
 			await db
 				.update(socialLinks)
 				.set({ platform, label, url, sortOrder, updatedAt: new Date() })
 				.where(eq(socialLinks.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'link',
+				entityId: id,
+				details: JSON.stringify({ platform, label, url })
+			});
+
 			return { success: true, action: 'updateSocialLink' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update social link.';
@@ -212,8 +313,9 @@ export const actions: Actions = {
 		if (!id) return { success: false, error: 'Link ID is required.', action: 'deleteSocialLink' };
 
 		try {
+			// Verify site ownership before deleting
 			const [existing] = await db
-				.select({ id: socialLinks.id })
+				.select({ id: socialLinks.id, siteId: socialLinks.siteId })
 				.from(socialLinks)
 				.where(eq(socialLinks.id, id))
 				.limit(1);
@@ -222,7 +324,21 @@ export const actions: Actions = {
 				return { success: false, error: 'Link not found.', action: 'deleteSocialLink' };
 			}
 
+			if (existing.siteId !== site.id) {
+				return { success: false, error: 'You do not have permission to delete this link.', action: 'deleteSocialLink' };
+			}
+
 			await db.delete(socialLinks).where(eq(socialLinks.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'delete',
+				entityType: 'link',
+				entityId: id
+			});
+
 			return { success: true, action: 'deleteSocialLink' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to delete social link.';

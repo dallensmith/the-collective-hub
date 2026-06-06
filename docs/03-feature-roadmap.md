@@ -14,24 +14,24 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ### Deliverables
 
-- [ ] SvelteKit project initialized with TypeScript
-- [ ] Drizzle ORM configured, connected to Postgres
-- [ ] Core database tables created: `sites`, `users`, `memberships`, `siteSettings`, `assets`
-- [ ] Better Auth integrated with Discord OAuth provider
-- [ ] Site resolver: reads `SITE_SLUG`, loads site + settings from DB, attaches to `locals`
-- [ ] Public homepage renders with site name and basic content
-- [ ] Login page: "Login with Discord" button
-- [ ] Owner bootstrap: `OWNER_DISCORD_ID` env var creates owner membership on first login
-- [ ] Super admin bootstrap: `SUPER_ADMIN_DISCORD_IDS` env var grants cross-site access
-- [ ] Admin auth guard: `/admin/*` routes redirect unauthenticated users to login
-- [ ] Basic admin dashboard page (placeholder with site name)
-- [ ] Admin settings page: edit site name and tagline (saved to `siteSettings` JSON)
-- [ ] CDN storage integration (Bunny CDN or S3-compatible)
-- [ ] Image upload endpoint with webp conversion and optimization
-- [ ] File validation: accepted types, max size
-- [ ] Asset records created in database on upload
-- [ ] Asset library page in admin: browse, search, copy CDN URL
-- [ ] Migration automation: primary deployment runs migrations on startup; others skip via `RUN_MIGRATIONS` env var
+- [x] SvelteKit project initialized with TypeScript
+- [x] Drizzle ORM configured, connected to Postgres
+- [x] Core database tables created: `sites`, `users`, `memberships`, `siteSettings`, `assets`
+- [x] Better Auth integrated with Discord OAuth provider
+- [x] Site resolver: reads `SITE_SLUG`, loads site + settings from DB, attaches to `locals`
+- [x] Public homepage renders with site name and basic content
+- [x] Login page: "Login with Discord" button
+- [x] Owner bootstrap: `OWNER_DISCORD_ID` env var creates owner membership on first login
+- [x] Super admin bootstrap: `SUPER_ADMIN_DISCORD_IDS` env var grants cross-site access
+- [x] Admin auth guard: `/admin/*` routes redirect unauthenticated users to login
+- [x] Basic admin dashboard page (placeholder with site name)
+- [x] Admin settings page: edit site name and tagline (saved to `siteSettings` JSON)
+- [x] CDN storage integration (Bunny CDN or S3-compatible)
+- [x] Image upload endpoint with webp conversion and optimization
+- [x] File validation: accepted types, max size
+- [x] Asset records created in database on upload
+- [x] Asset library page in admin: browse, search, copy CDN URL
+- [x] Migration automation: primary deployment runs migrations on startup; others skip via `RUN_MIGRATIONS` env var
 
 ### What's NOT in Phase 1
 - No branding customization (logo, colors) — Phase 2
@@ -48,15 +48,15 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ### Deliverables
 
-- [ ] Admin branding page: select logo, background image, favicon from asset library
-- [ ] Admin theme page: preset selector (dark/light/custom), accent color, background color, text color
-- [ ] CSS custom properties generated from theme settings
-- [ ] Admin homepage editor: hero title, subtitle, about text, CTA button text/link
-- [ ] Public site renders all branding and homepage settings
-- [ ] Admin nav links manager: add, edit, reorder, delete header/footer links
-- [ ] Admin social links manager: add, edit, reorder, delete social platform links
-- [ ] Public site renders nav links and social links
-- [ ] Layout preset support (single configurable layout for V1)
+- [x] Admin branding page: select logo, background image, favicon from asset library
+- [x] Admin theme page: preset selector (dark/light/custom), accent color, background color, text color
+- [x] CSS custom properties generated from theme settings
+- [x] Admin homepage editor: hero title, subtitle, about text, CTA button text/link
+- [x] Public site renders all branding and homepage settings
+- [x] Admin nav links manager: add, edit, reorder, delete header/footer links
+- [x] Admin social links manager: add, edit, reorder, delete social platform links
+- [x] Public site renders nav links and social links
+- [x] Layout preset support (single configurable layout for V1)
 
 ### What's NOT in Phase 2
 - Multiple layout options (just one flexible layout)
@@ -72,13 +72,13 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ### Deliverables
 
-- [ ] Events table created (if not already)
-- [ ] Admin events manager: create, edit, delete, publish/unpublish events
-- [ ] Event fields: title, description, type, start time, end time, timezone, location, external link, image
-- [ ] Public homepage: "Next Event" card (shows the next upcoming published event)
-- [ ] Public homepage: "Upcoming Events" list/schedule section
-- [ ] Event detail page (optional — can be a modal or external link for V1)
-- [ ] Timezone display handling (show event time in visitor's local time via JS)
+- [x] Events table created (if not already)
+- [x] Admin events manager: create, edit, delete, publish/unpublish events
+- [x] Event fields: title, description, type, start time, end time, timezone, location, external link, image
+- [x] Public homepage: "Next Event" card (shows the next upcoming published event)
+- [x] Public homepage: "Upcoming Events" list/schedule section
+- [x] Event detail page (optional — can be a modal or external link for V1)
+- [x] Timezone display handling (show event time in visitor's local time via JS)
 
 ### What's NOT in Phase 3
 - Recurring/repeating events
@@ -95,12 +95,12 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ### Deliverables
 
-- [ ] Super admin auth: `SUPER_ADMIN_DISCORD_IDS` env var bypasses site-scoped membership checks
-- [ ] Super admin dashboard: list all sites with status, quick links
-- [ ] Create new site flow: insert site row, generate setup instructions
-- [ ] View any site's settings, events, assets (read-only cross-site access)
-- [ ] Feature flag management across sites
-- [ ] Site deactivation/reactivation
+- [x] Super admin auth: `SUPER_ADMIN_DISCORD_IDS` env var bypasses site-scoped membership checks
+- [x] Super admin dashboard: list all sites with status, quick links
+- [x] Create new site flow: insert site row, generate setup instructions
+- [x] View any site's settings, events, assets (read-only cross-site access)
+- [x] Feature flag management across sites
+- [x] Site deactivation/reactivation
 
 ### What's NOT in Phase 4
 - Full site provisioning automation (still manual Coolify setup)
@@ -115,14 +115,14 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ### Deliverables
 
-- [ ] Role management: owner can add/remove admins and editors
-- [ ] Admin list page showing all team members with roles
-- [ ] Preview mode: admins can preview unpublished changes
-- [ ] Improved admin dashboard with quick stats
-- [ ] Site cloning helper (manual or scripted) for creating new sites
-- [ ] Feature flags via settings JSON or env vars
-- [ ] Audit-like log of who changed what (basic)
-- [ ] Enhanced super admin dashboard: cross-site search, bulk operations
+- [x] Role management: owner can add/remove admins and editors
+- [x] Admin list page showing all team members with roles
+- [x] Preview mode: admins can preview unpublished changes
+- [x] Improved admin dashboard with quick stats
+- [x] Site cloning helper (manual or scripted) for creating new sites
+- [x] Feature flags via settings JSON or env vars
+- [x] Audit-like log of who changed what (basic)
+- [x] Enhanced super admin dashboard: cross-site search, bulk operations
 
 ### What's NOT in Phase 5
 - Full audit trail with rollback
@@ -131,12 +131,40 @@ Each phase builds on the previous one. Phases are ordered by dependency, not by 
 
 ---
 
-## Phase 6: Future (Optional, Not Planned in Detail)
+## Phase 6: Discord Integration & Future Features
 
-These are ideas for later. Do not build any of these until Phases 1-5 are solid.
+Phase 6 is broken into smaller, independently shippable sub-features.
+
+### Phase 6a: Discord Event Display  ✅ Implemented
+
+**Goal:** Pull Discord Scheduled Events from a connected server via the existing bot and display them on the public site, replacing native events when Discord is connected. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md) for the full design.
+
+**Deliverables:**
+
+- [x] Discord REST client with in-memory cache (`src/lib/server/discord.ts`) — fetches scheduled events, caches for 60s, handles rate limits and errors
+- [x] Admin settings: guild ID input, enable toggle, bot connection status indicator
+- [x] Public homepage: fetches Discord events when connected, normalizes to same display shape as native events, shows "via Discord" attribution
+- [x] Admin events page: "Managed in Discord" banner when Discord events are active, native CRUD hidden
+- [x] Graceful fallback: no `DISCORD_BOT_TOKEN` → skip silently; bot not in server (403) → show empty with no error to visitors; rate limited (429) → retry after `Retry-After`; stale cache served on API failure
+
+### Phase 6b: Discord Role Sync ✅ Implemented
+
+**Goal:** Auto-assign site membership roles based on a user's Discord server roles. See [`docs/11-discord-integration-plan.md`](docs/11-discord-integration-plan.md:252-316) for detailed design.
+
+**Deliverables:**
+
+- [x] `getGuildMember()` and `getGuildRoles()` added to Discord REST client
+- [x] Role sync logic in `+layout.server.ts` — runs after owner bootstrap, never downgrades bootstrapped owner
+- [x] Admin settings UI: role sync enable toggle, role mapping list (Discord role → site role)
+- [x] `/api/discord/roles` proxy endpoint for fetching guild roles in admin dropdown
+- [x] Best-effort sync: Discord API failures never block login; `[role-sync]` prefixed logging
+- [x] Requires `guilds.members.read` privileged intent on the Discord bot (documented)
+
+### Future Ideas (Not Yet Scoped)
+
+Do not build any of these until Phases 1–6 are solid and a clear need is proven:
 
 - **Community features:** reviews, comments, discussion posts
-- **Discord integration:** server widget, event sync, role sync
 - **Calendar feeds:** iCal export, Google Calendar integration
 - **AI tools:** content suggestions, event descriptions, semantic search (pgvector)
 - **Advanced theming:** multiple layout presets, custom CSS per site
@@ -157,7 +185,9 @@ flowchart TD
     P1 --> P4[Phase 4: Super Admin Dashboard]
     P3 --> P5[Phase 5: Admin Improvements]
     P4 --> P5
-    P5 --> P6[Phase 6: Future Features]
+    P5 --> P6a[Phase 6a: Discord Event Display]
+    P6a --> P6b[Phase 6b: Discord Role Sync]
+    P6b -.-> P6f[Future Features]
 ```
 
-**Note:** Phase 1 now includes CDN + asset upload (previously Phase 3). Phase 4 (Super Admin Dashboard) can start as soon as Phase 1 is done — it's independent of branding and events. Phase 5 enhances both regular admin and super admin experiences.
+**Note:** Phase 1 now includes CDN + asset upload (previously Phase 3). Phase 4 (Super Admin Dashboard) can start as soon as Phase 1 is done — it's independent of branding and events. Phase 5 enhances both regular admin and super admin experiences. Both Phase 6a and 6b are complete. Phase 6b requires `guilds.members.read` privileged intent on the Discord bot.

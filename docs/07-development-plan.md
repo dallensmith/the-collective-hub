@@ -6,6 +6,8 @@ This is a step-by-step build order for Phase 1 and beyond. Each step lists what 
 
 **Follow the order.** Each step builds on the previous one. Don't skip ahead.
 
+> **Progress update (2026-06-06):** Steps 1–15 are complete. The project is deployed and live.
+
 ---
 
 ## Phase 1: Foundation
@@ -237,15 +239,36 @@ This is a step-by-step build order for Phase 1 and beyond. Each step lists what 
 
 ## Phase 2 Onward
 
-Once Phase 1 is fully working, continue with:
+Phases 2–5 are complete. The following were implemented:
 
-1. Nav links + social links admin pages and public rendering
-2. Homepage content editor (hero title, subtitle, about text, CTA)
-3. Events: schema, admin CRUD, public render
-4. Super admin dashboard (Phase 4)
-5. Role management (Phase 5)
+1. ✅ Nav links + social links admin pages and public rendering
+2. ✅ Homepage content editor (hero title, subtitle, about text, CTA)
+3. ✅ Events: schema, admin CRUD, public render
+4. ✅ Super admin dashboard (Phase 4)
+5. ✅ Role management (Phase 5)
+6. ✅ Preview mode (draft/publish workflow)
+7. ✅ Audit log (basic event logging + viewer)
+8. ✅ Feature flags system
+9. ✅ Discord Event Display (Phase 6a)
 
-Detailed steps for Phases 2-5 should be written once Phase 1 is complete and any lessons learned are incorporated.
+## Current Status (2026-06-06)
+
+All Phase 1–6 deliverables are complete. The project is deployed and live via Coolify with Docker.
+
+### Completed
+
+- ✅ Steps 1–15 (Phase 1: Foundation) — SvelteKit, Drizzle, Better Auth, CDN, asset upload, migration automation, Docker, deployment
+- ✅ Phase 2: Branding & Customization — branding page, theme editor, homepage editor, nav/social links
+- ✅ Phase 3: Events & Schedule — events CRUD, public rendering, timezone support
+- ✅ Phase 4: Super Admin Dashboard — cross-site access, site creation, feature flags, deactivation
+- ✅ Phase 5: Admin Improvements — role management, preview mode (draft/publish), audit log, site cloning, feature flags
+- ✅ Phase 6a: Discord Event Display — REST client, cache, admin config, public homepage integration
+- ✅ Phase 6b: Discord Role Sync — `getGuildMember`/`getGuildRoles` in discord.ts, role sync in +layout.server.ts, admin settings UI, `/api/discord/roles` endpoint
+- ✅ Automated Testing — 60 smoke tests across 5 test files (Vitest): site-resolver, preview-token, CDN, admin auth guard, timezone
+
+### Remaining Work
+
+No remaining work. The project is feature-complete for the MVP scope defined in the planning documents.
 
 ---
 

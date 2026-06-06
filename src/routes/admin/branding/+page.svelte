@@ -17,25 +17,63 @@
 	let bgPickerOpen = $state(false);
 
 	// Currently selected logo/background CDN keys (bound to form)
-	let logoCdnKey = $state(data.branding?.logoCdnKey ?? '');
-	let backgroundCdnKey = $state(data.branding?.backgroundCdnKey ?? '');
+	let logoCdnKey = $state('');
+	$effect(() => {
+		logoCdnKey = data.branding?.logoCdnKey ?? '';
+	});
+	let backgroundCdnKey = $state('');
+	$effect(() => {
+		backgroundCdnKey = data.branding?.backgroundCdnKey ?? '';
+	});
+
+	// Favicon CDN key — initialised from saved branding, updated on upload
+	let faviconCdnKey = $state('');
+	$effect(() => {
+		faviconCdnKey = data.branding?.faviconCdnKey ?? '';
+	});
 
 	// Theme values
-	let themePreset = $state(data.theme?.preset ?? 'dark');
-	let accentColor = $state(data.theme?.accentColor ?? '#e63946');
-	let backgroundColor = $state(data.theme?.backgroundColor ?? '#1a1a2e');
-	let textColor = $state(data.theme?.textColor ?? '#eaeaea');
+	let themePreset = $state('dark');
+	$effect(() => {
+		themePreset = data.theme?.preset ?? 'dark';
+	});
+	let accentColor = $state('#e63946');
+	$effect(() => {
+		accentColor = data.theme?.accentColor ?? '#e63946';
+	});
+	let backgroundColor = $state('#1a1a2e');
+	$effect(() => {
+		backgroundColor = data.theme?.backgroundColor ?? '#1a1a2e';
+	});
+	let textColor = $state('#eaeaea');
+	$effect(() => {
+		textColor = data.theme?.textColor ?? '#eaeaea';
+	});
 
 	// Site name & tagline (from branding, so pre-fill from current settings)
-	let siteName = $state(data.branding?.siteName ?? $page.data.site?.name ?? '');
-	let tagline = $state(data.branding?.tagline ?? '');
+	let siteName = $state('');
+	$effect(() => {
+		siteName = data.branding?.siteName ?? $page.data.site?.name ?? '';
+	});
+	let tagline = $state('');
+	$effect(() => {
+		tagline = data.branding?.tagline ?? '';
+	});
 
 	// Clear feedback when form action data changes (new submission)
 	$effect(() => {
 		if (form) {
 			saving = false;
 			if (form.success) {
-				feedback = { type: 'success', message: 'Branding settings saved.' };
+				if ((form as Record<string, unknown>).draftSaved) {
+					feedback = { type: 'success', message: 'Draft saved. Changes are not yet live.' };
+				} else if ((form as Record<string, unknown>).published) {
+					feedback = { type: 'success', message: 'Branding published and live.' };
+				} else if ((form as Record<string, unknown>).draftsDiscarded) {
+					feedback = { type: 'success', message: 'Drafts discarded.' };
+				} else {
+					feedback = { type: 'success', message: 'Branding settings saved.' };
+				}
 			} else if (form.error) {
 				feedback = { type: 'error', message: form.error };
 			}
@@ -109,9 +147,12 @@
 				const err = await res.json().catch(() => ({ message: 'Upload failed.' }));
 				feedback = { type: 'error', message: err.message ?? 'Favicon upload failed.' };
 			} else {
-				feedback = { type: 'success', message: 'Favicon uploaded. Save to apply.' };
-				// Reload to get the new asset in the list
-				window.location.reload();
+				const asset = await res.json() as AssetItem;
+				// Update the favicon key reactively so the form includes it on save
+				faviconCdnKey = asset.cdnKey;
+				// Prepend the new asset to the list so it appears in asset pickers
+				data.assetList.unshift(asset);
+				feedback = { type: 'success', message: 'Favicon uploaded. Click Save Branding to apply.' };
 			}
 		} catch {
 			feedback = { type: 'error', message: 'Network error during upload.' };
@@ -312,9 +353,9 @@
 			<div class="form-group">
 				<label class="form-label" for="favicon-upload">Favicon</label>
 				<div class="favicon-row">
-					{#if data.branding?.faviconCdnKey && getAssetUrl(data.branding.faviconCdnKey)}
+					{#if faviconCdnKey && getAssetUrl(faviconCdnKey)}
 						<img
-							src={getAssetUrl(data.branding.faviconCdnKey)}
+							src={getAssetUrl(faviconCdnKey)}
 							alt="Current favicon"
 							class="favicon-preview"
 							width="32"
@@ -333,7 +374,7 @@
 				<input
 					type="hidden"
 					name="faviconCdnKey"
-					value={data.branding?.faviconCdnKey ?? ''}
+					value={faviconCdnKey}
 				/>
 				<p class="form-help">
 					Upload a favicon image. It will be added to your asset library. Recommended: 32×32 PNG.
@@ -487,12 +528,30 @@
 			<!-- Actions -->
 			<!-- ═══════════════════════════════════════════ -->
 			<div class="form-actions">
-				<button type="submit" class="save-btn" disabled={saving}>
+				<button
+					type="submit"
+					class="save-btn save-btn--draft"
+					formaction="?/saveDraft"
+					disabled={saving}
+				>
 					{#if saving}
 						<span class="spinner"></span>
 						Saving…
 					{:else}
-						Save Branding
+						Save Draft
+					{/if}
+				</button>
+				<button
+					type="submit"
+					class="save-btn"
+					formaction="?/publish"
+					disabled={saving}
+				>
+					{#if saving}
+						<span class="spinner"></span>
+						Publishing…
+					{:else}
+						🗸 Publish
 					{/if}
 				</button>
 
@@ -915,6 +974,14 @@
 	.save-btn:disabled {
 		opacity: 0.7;
 		cursor: not-allowed;
+	}
+
+	.save-btn--draft {
+		background: #555;
+	}
+
+	.save-btn--draft:hover {
+		background: #444;
 	}
 
 	.preview-link {

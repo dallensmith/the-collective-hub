@@ -5,6 +5,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { auth } from '$lib/server/auth';
 import { getSiteBySlug } from '$lib/server/site-resolver';
 import { runMigrations } from '$lib/server/db/migrate';
+import { verifyPreviewToken } from '$lib/server/preview-token';
 
 // ─── Migration Automation ────────────────────────────────────────────────────
 //
@@ -49,7 +50,29 @@ export const handle: Handle = async ({ event, resolve }) => {
 		);
 	}
 
-	const siteContext = await getSiteBySlug(slug);
+	// --- Preview Mode Detection ---
+	// Read the ct_preview cookie and verify the HMAC token.
+	// This is a provisional check — the final authorization refinement
+	// happens in +layout.server.ts after the user session is loaded.
+	const previewCookie = event.cookies.get('ct_preview');
+	let isPreviewing = false;
+
+	if (previewCookie) {
+		const payload = verifyPreviewToken(previewCookie);
+
+		if (payload) {
+			// Token is cryptographically valid and not expired.
+			// Authorization (user still an admin?) is refined in +layout.server.ts.
+			isPreviewing = true;
+		} else {
+			// Invalid or expired token — clear the cookie
+			event.cookies.delete('ct_preview', { path: '/' });
+		}
+	}
+
+	event.locals.isPreviewing = isPreviewing;
+
+	const siteContext = await getSiteBySlug(slug, { preview: isPreviewing });
 	event.locals.site = siteContext.site;
 	event.locals.siteSlug = slug;
 	event.locals.siteSettings = siteContext.settings;

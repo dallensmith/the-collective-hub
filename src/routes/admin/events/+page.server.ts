@@ -1,17 +1,57 @@
 import { db } from '$lib/server/db';
-import { events } from '$lib/server/db/schema';
+import { events, assets } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
-import type { Actions } from '@sveltejs/kit';
+import { getCdnUrl } from '$lib/server/cdn';
+import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load all events for the current site, ordered by startTime descending (newest first).
+ * Also loads assets for the image picker dropdown.
+ * When Discord events are enabled, returns a flag so the page can show a notice
+ * instead of the native event manager.
  */
 export const load: PageServerLoad = async (event) => {
 	const { site } = event.locals;
 
 	if (!site) {
-		return { events: [] };
+		return { events: [], discordEventsEnabled: false, discordGuildId: null, assets: [] };
+	}
+
+	// Feature flag guard: events must be enabled
+	if (event.locals.siteSettings?.featureFlags?.events === false) {
+		throw error(403, 'The Events feature is disabled for this site.');
+	}
+
+	const discordConfig = event.locals.siteSettings?.discord;
+	const discordEventsEnabled = discordConfig?.eventsEnabled === true && discordConfig?.guildId != null;
+	const discordGuildId = discordConfig?.guildId ?? null;
+
+	// Load assets for the image picker (always load, even if Discord events enabled)
+	const assetRows = await db
+		.select()
+		.from(assets)
+		.where(eq(assets.siteId, site.id))
+		.orderBy(desc(assets.createdAt))
+		.limit(100);
+
+	const assetList = assetRows.map((a) => ({
+		id: a.id,
+		filename: a.filename,
+		cdnKey: a.cdnKey,
+		cdnUrl: getCdnUrl(a.cdnKey),
+		mimeType: a.mimeType
+	}));
+
+	// When Discord events are enabled, skip native event queries
+	if (discordEventsEnabled) {
+		return {
+			events: [],
+			discordEventsEnabled: true,
+			discordGuildId,
+			assets: assetList
+		};
 	}
 
 	const eventRows = await db
@@ -21,7 +61,10 @@ export const load: PageServerLoad = async (event) => {
 		.orderBy(desc(events.startTime));
 
 	return {
-		events: eventRows
+		events: eventRows,
+		discordEventsEnabled: false,
+		discordGuildId: null,
+		assets: assetList
 	};
 };
 
@@ -76,19 +119,35 @@ export const actions: Actions = {
 		const finalEventType = validTypes.includes(eventType) ? eventType : 'screening';
 
 		try {
-			await db.insert(events).values({
-				siteId: site.id,
-				title,
-				description,
-				eventType: finalEventType,
-				startTime,
-				endTime,
-				timezone,
-				location,
-				externalLink,
-				imageCdnKey,
-				isPublished
-			});
+			const [created] = await db
+				.insert(events)
+				.values({
+					siteId: site.id,
+					title,
+					description,
+					eventType: finalEventType,
+					startTime,
+					endTime,
+					timezone,
+					location,
+					externalLink,
+					imageCdnKey,
+					isPublished
+				})
+				.returning({ id: events.id });
+
+			if (created) {
+				logAuditEvent({
+					siteId: site.id,
+					userId: event.locals.user?.discordId ?? 'unknown',
+					userEmail: event.locals.user?.email,
+					action: 'create',
+					entityType: 'event',
+					entityId: created.id,
+					details: JSON.stringify({ title, eventType: finalEventType })
+				});
+			}
+
 			return { success: true, action: 'create' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to create event.';
@@ -169,6 +228,17 @@ export const actions: Actions = {
 					updatedAt: new Date()
 				})
 				.where(eq(events.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'event',
+				entityId: id,
+				details: JSON.stringify({ title, eventType: finalEventType })
+			});
+
 			return { success: true, action: 'update' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update event.';
@@ -203,6 +273,16 @@ export const actions: Actions = {
 
 		try {
 			await db.delete(events).where(eq(events.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'delete',
+				entityType: 'event',
+				entityId: id
+			});
+
 			return { success: true, action: 'delete' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to delete event.';
@@ -240,6 +320,17 @@ export const actions: Actions = {
 				.update(events)
 				.set({ isPublished: !existing.isPublished, updatedAt: new Date() })
 				.where(eq(events.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'event',
+				entityId: id,
+				details: JSON.stringify({ isPublished: !existing.isPublished })
+			});
+
 			return { success: true, action: 'togglePublish' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to toggle publish status.';

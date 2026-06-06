@@ -19,6 +19,7 @@ declare global {
 			} | null;
 			membership: Membership | null;
 			isSuperAdmin: boolean;
+			isPreviewing: boolean;
 		}
 		// interface PageData {}
 		// interface PageState {}

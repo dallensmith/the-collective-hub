@@ -4,6 +4,9 @@ import { db } from '$lib/server/db';
 import { users, memberships } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { getCdnUrl } from '$lib/server/cdn';
+import { getSiteBySlug } from '$lib/server/site-resolver';
+import { getGuildMember } from '$lib/server/discord';
 
 /**
  * Root layout server load — runs on every page navigation.
@@ -110,6 +113,88 @@ export const load: LayoutServerLoad = async (event) => {
 					});
 			}
 
+			// --- Discord Role Sync ---
+			// Only if roleSync is enabled AND guildId is configured AND appUser exists
+			// AND the user is NOT the bootstrapped owner (OWNER_DISCORD_ID always wins)
+			const siteSettingsForRoleSync = event.locals.siteSettings;
+			if (
+				appUser &&
+				site &&
+				siteSettingsForRoleSync?.discord?.roleSyncEnabled &&
+				siteSettingsForRoleSync.discord.guildId &&
+				discordAccount.accountId !== env.OWNER_DISCORD_ID
+			) {
+				try {
+					const member = await getGuildMember(
+						siteSettingsForRoleSync.discord.guildId,
+						discordAccount.accountId
+					);
+
+					if (member) {
+						// Find the highest-priority matching role mapping
+						const matchedMapping = siteSettingsForRoleSync.discord.roleMappings?.find(
+							(m) => member.roles.includes(m.discordRoleId)
+						);
+
+						if (matchedMapping) {
+							// Upsert membership with the mapped role
+							await db
+								.insert(memberships)
+								.values({
+									siteId: site.id,
+									userId: appUser.id,
+									role: matchedMapping.siteRole
+								})
+								.onConflictDoUpdate({
+									target: [memberships.siteId, memberships.userId],
+									set: { role: matchedMapping.siteRole, updatedAt: new Date() }
+								});
+
+							console.log(
+								`[role-sync] User ${discordAccount.accountId} assigned role ${matchedMapping.siteRole} via Discord mapping ${matchedMapping.discordRoleId}`
+							);
+						} else {
+							// User has no matching Discord role — if they have a membership from a previous
+							// sync (not owner bootstrap), remove it
+							const [existingMembership] = await db
+								.select()
+								.from(memberships)
+								.where(
+									and(
+										eq(memberships.siteId, site.id),
+										eq(memberships.userId, appUser.id)
+									)
+								)
+								.limit(1);
+
+							if (existingMembership && existingMembership.role !== 'owner') {
+								await db
+									.delete(memberships)
+									.where(eq(memberships.id, existingMembership.id));
+
+								console.log(
+									`[role-sync] User ${discordAccount.accountId} had no matching Discord roles, membership removed`
+								);
+							}
+						}
+					} else {
+						console.warn('[role-sync] Role sync enabled but bot not in server or user not found');
+					}
+				} catch (err) {
+					// Role sync is best-effort — log warning, don't block login
+					console.warn('[role-sync] Failed to sync roles:', err);
+				}
+			}
+
+			// If the user IS the bootstrapped owner, we explicitly skip role sync
+			if (
+				appUser &&
+				discordAccount.accountId === env.OWNER_DISCORD_ID &&
+				siteSettingsForRoleSync?.discord?.roleSyncEnabled
+			) {
+				console.log('[role-sync] Role sync skipped: user is bootstrapped owner');
+			}
+
 			// --- Load Membership ---
 			if (appUser) {
 				const [memberRow] = await db
@@ -141,12 +226,49 @@ export const load: LayoutServerLoad = async (event) => {
 	event.locals.membership = membership;
 	event.locals.isSuperAdmin = isSuperAdmin;
 
+	// --- Preview Mode Authorization Refinement ---
+	// hooks.server.ts provisionally sets isPreviewing based on token validity.
+	// Here we refine it: the user must be authenticated AND authorized for the site.
+	let isPreviewing = event.locals.isPreviewing;
+
+	if (isPreviewing) {
+		const isAuthorizedForPreview =
+			isSuperAdmin ||
+			(membership && ['owner', 'admin', 'editor'].includes(membership.role));
+
+		if (!isAuthorizedForPreview) {
+			// User is not authorized — disable preview mode
+			isPreviewing = false;
+			event.locals.isPreviewing = false;
+			event.cookies.delete('ct_preview', { path: '/' });
+
+			// Re-load site settings without preview (live settings)
+			if (siteSlug) {
+				const liveContext = await getSiteBySlug(siteSlug, { preview: false });
+				event.locals.siteSettings = liveContext.settings;
+			}
+		} else if (siteSlug) {
+			// User is authorized — ensure siteSettings has draft-merged data
+			// (hooks already loaded with preview=true, but re-load to be safe)
+			const previewContext = await getSiteBySlug(siteSlug, { preview: true });
+			event.locals.siteSettings = previewContext.settings;
+		}
+	}
+
+	// Compute favicon URL server-side so the client doesn't need getCdnUrl
+	const currentSettings = event.locals.siteSettings ?? siteSettings;
+	const faviconUrl = currentSettings?.branding?.faviconCdnKey
+		? getCdnUrl(currentSettings.branding.faviconCdnKey)
+		: null;
+
 	return {
 		site,
 		siteSlug,
-		siteSettings,
+		siteSettings: currentSettings,
 		user: event.locals.user,
 		membership,
-		isSuperAdmin
+		isSuperAdmin,
+		faviconUrl,
+		isPreviewing
 	};
 };

@@ -1,5 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
+import { db } from '$lib/server/db';
+import { siteSettings } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 /**
  * Admin auth guard — runs on every /admin/* request.
@@ -38,8 +41,23 @@ export const load: LayoutServerLoad = async (event) => {
 		? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.discordAvatar}.png`
 		: `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discordId) >> 22) % 6}.png`;
 
+	// Extract feature flags from site settings (default: all enabled if not configured)
+	const featureFlags = event.locals.siteSettings?.featureFlags ?? {};
+
 	// Super admins bypass all membership/role checks — grant immediate access
 	if (isSuperAdmin) {
+		// Query hasDrafts for the current site
+		let hasDrafts = false;
+		if (site) {
+			const [settingsRow] = await db
+				.select({ draftSettings: siteSettings.draftSettings })
+				.from(siteSettings)
+				.where(eq(siteSettings.siteId, site.id))
+				.limit(1);
+
+			hasDrafts = settingsRow?.draftSettings != null;
+		}
+
 		return {
 			user: {
 				...user,
@@ -47,7 +65,9 @@ export const load: LayoutServerLoad = async (event) => {
 			},
 			membership: null,
 			site,
-			isSuperAdmin: true
+			isSuperAdmin: true,
+			featureFlags,
+			hasDrafts
 		};
 	}
 
@@ -69,6 +89,19 @@ export const load: LayoutServerLoad = async (event) => {
 	}
 
 	// User is authorized — return data for admin pages
+
+	// Query hasDrafts for the current site (used by the admin layout to show preview/discard buttons)
+	let hasDrafts = false;
+	if (site) {
+		const [settingsRow] = await db
+			.select({ draftSettings: siteSettings.draftSettings })
+			.from(siteSettings)
+			.where(eq(siteSettings.siteId, site.id))
+			.limit(1);
+
+		hasDrafts = settingsRow?.draftSettings != null;
+	}
+
 	return {
 		user: {
 			...user,
@@ -76,6 +109,9 @@ export const load: LayoutServerLoad = async (event) => {
 		},
 		membership,
 		site,
-		isSuperAdmin: false
+		isSuperAdmin: false,
+		featureFlags,
+		hasDrafts
 	};
 };
+

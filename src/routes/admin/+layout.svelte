@@ -21,6 +21,52 @@
 		window.location.href = '/';
 	}
 
+	/** Enable preview mode: POST to /api/preview, then open public site in a new tab */
+	async function enablePreview() {
+		try {
+			const res = await fetch('/api/preview', { method: 'POST' });
+			if (res.ok) {
+				window.open('/', '_blank');
+			} else {
+				const err = await res.json().catch(() => ({ error: 'Failed to enable preview.' }));
+				alert(err.error ?? 'Failed to enable preview mode.');
+			}
+		} catch {
+			alert('Network error enabling preview mode.');
+		}
+	}
+
+	/** Discard all drafts after confirmation — uses the layout-level discardAllDrafts action */
+	async function handleDiscardDrafts() {
+		if (!confirm('Discard all unpublished drafts? This cannot be undone.')) return;
+
+		const formData = new FormData();
+		try {
+			const res = await fetch(`/admin?/discardAllDrafts`, {
+				method: 'POST',
+				body: formData
+			});
+			if (res.ok) {
+				window.location.reload();
+			} else {
+				const err = await res.json().catch(() => ({ error: 'Failed to discard drafts.' }));
+				alert(err.error ?? 'Failed to discard drafts.');
+			}
+		} catch {
+			alert('Network error discarding drafts.');
+		}
+	}
+
+	/** Whether the current page is a settings-related page (shows draft status bar) */
+	let isSettingsPage = $derived(
+		$page.url.pathname.startsWith('/admin/settings') ||
+		$page.url.pathname.startsWith('/admin/branding') ||
+		$page.url.pathname.startsWith('/admin/homepage')
+	);
+
+	/** Whether drafts exist */
+	let hasDrafts = $derived((data as Record<string, unknown>).hasDrafts as boolean ?? false);
+
 	/**
 	 * Check if a nav path matches the current page.
 	 * Dashboard ("/admin") only matches exactly; other paths match prefix.
@@ -34,19 +80,28 @@
 	interface NavItem {
 		label: string;
 		href: string;
-		placeholder: boolean;
 	}
 
-	const navItems: NavItem[] = [
-		{ label: 'Dashboard', href: '/admin', placeholder: false },
-		{ label: 'Settings', href: '/admin/settings', placeholder: false },
-		{ label: 'Branding', href: '/admin/branding', placeholder: false },
-		{ label: 'Homepage', href: '/admin/homepage', placeholder: false },
-		{ label: 'Links', href: '/admin/links', placeholder: false },
-		{ label: 'Events', href: '/admin/events', placeholder: false },
-		{ label: 'Assets', href: '/admin/assets', placeholder: false },
-		{ label: 'Team', href: '/admin/team', placeholder: true }
-	];
+	/** Feature flags from layout data (default: all enabled when unset) */
+	let featureFlags = $derived((data as Record<string, unknown>).featureFlags as Record<string, boolean> | undefined ?? {});
+
+	/** Whether a given feature is enabled (undefined = enabled for backward compat) */
+	function flag(key: string): boolean {
+		return featureFlags[key] !== false;
+	}
+
+	let navItems = $derived<NavItem[]>([
+		{ label: 'Dashboard', href: '/admin' },
+		{ label: 'Settings', href: '/admin/settings' },
+		...(flag('branding') ? [{ label: 'Branding', href: '/admin/branding' }] : []),
+		...(flag('homepageEditor') ? [{ label: 'Homepage', href: '/admin/homepage' }] : []),
+		...(flag('navLinks') || flag('socialLinks') ? [{ label: 'Links', href: '/admin/links' }] : []),
+		...(flag('events') ? [{ label: 'Events', href: '/admin/events' }] : []),
+		...(flag('assetLibrary') ? [{ label: 'Assets', href: '/admin/assets' }] : []),
+		...(data.isSuperAdmin ? [{ label: 'Super Admin', href: '/admin/super' }] : []),
+		{ label: 'Audit Log', href: '/admin/audit-log' },
+		{ label: 'Team', href: '/admin/team' }
+	]);
 </script>
 
 <svelte:head>
@@ -72,21 +127,14 @@
 			<ul>
 				{#each navItems as item}
 					<li>
-						{#if item.placeholder}
-							<span class="nav-link nav-link--placeholder" title="Coming in a later phase">
-								{item.label}
-								<span class="placeholder-badge">soon</span>
-							</span>
-						{:else}
-							<a
-								href={item.href}
-								class="nav-link"
-								class:nav-link--active={isActive(item.href)}
-								onclick={closeSidebar}
-							>
-								{item.label}
-							</a>
-						{/if}
+						<a
+							href={item.href}
+							class="nav-link"
+							class:nav-link--active={isActive(item.href)}
+							onclick={closeSidebar}
+						>
+							{item.label}
+						</a>
 					</li>
 				{/each}
 			</ul>
@@ -95,7 +143,7 @@
 		<div class="sidebar-footer">
 			<a href="/" class="back-link">← Back to Site</a>
 			{#if data.isSuperAdmin}
-				<a href="/admin" class="back-link super-admin-link" title="View All Sites (Phase 4)">
+				<a href="/admin/super" class="back-link super-admin-link" title="View All Sites">
 					🌐 View All Sites
 				</a>
 			{/if}
@@ -140,6 +188,29 @@
 				<button class="logout-btn" onclick={handleLogout}>Logout</button>
 			</div>
 		</header>
+
+		<!-- Draft Status Bar (only on settings-related pages) -->
+		{#if isSettingsPage}
+			<div class="draft-bar">
+				<div class="draft-bar-status">
+					{#if hasDrafts}
+						<span class="draft-indicator draft-indicator--pending">📝 Drafts pending — preview before publishing</span>
+					{:else}
+						<span class="draft-indicator draft-indicator--none">No unpublished changes</span>
+					{/if}
+				</div>
+				<div class="draft-bar-actions">
+					{#if hasDrafts}
+						<button class="draft-btn draft-btn--preview" onclick={enablePreview}>
+							🔍 Preview
+						</button>
+						<button class="draft-btn draft-btn--discard" onclick={handleDiscardDrafts}>
+							🗑️ Discard Drafts
+						</button>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Content Area -->
 		<main class="content">
@@ -231,30 +302,6 @@
 		background: #1c2129;
 		color: #f0f6fc;
 		border-left-color: #58a6ff;
-	}
-
-	/* Placeholder nav items */
-	.nav-link--placeholder {
-		cursor: not-allowed;
-		opacity: 0.5;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.nav-link--placeholder:hover {
-		background: transparent;
-		color: #8b949e;
-	}
-
-	.placeholder-badge {
-		font-size: 0.65rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: #30363d;
-		color: #8b949e;
-		padding: 0.1rem 0.4rem;
-		border-radius: 3px;
 	}
 
 	.sidebar-footer {
@@ -384,6 +431,66 @@
 	.logout-btn:hover {
 		background: #e5534b;
 		color: #fff;
+	}
+
+	/* ── Draft Status Bar ──────────────────────────────────────── */
+	.draft-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.6rem 1.5rem;
+		background: #fff8e1;
+		border-bottom: 1px solid #ffe082;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.draft-bar-status {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.draft-indicator--pending {
+		color: #e65100;
+	}
+
+	.draft-indicator--none {
+		color: #888;
+	}
+
+	.draft-bar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.draft-btn {
+		padding: 0.35rem 0.8rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		border-radius: 5px;
+		border: none;
+		cursor: pointer;
+		transition: background 0.15s, opacity 0.15s;
+	}
+
+	.draft-btn--preview {
+		background: #1a1a2e;
+		color: #fff;
+	}
+
+	.draft-btn--preview:hover {
+		background: #333;
+	}
+
+	.draft-btn--discard {
+		background: transparent;
+		color: #e5534b;
+		border: 1px solid #e5534b;
+	}
+
+	.draft-btn--discard:hover {
+		background: #fde8e8;
 	}
 
 	/* ── Content Area ───────────────────────────────────────────── */
