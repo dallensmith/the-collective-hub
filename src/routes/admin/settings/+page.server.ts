@@ -5,6 +5,7 @@ import { db } from '$lib/server/db';
 import { siteSettings } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { saveDraft, publishDrafts, discardDrafts } from '$lib/server/settings-writer';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load current site name and tagline from the siteSettings JSON blob.
@@ -85,6 +86,16 @@ export const actions: Actions = {
 		try {
 			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline);
 			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'settings',
+				details: JSON.stringify({ siteName: validation.siteName, tagline: validation.tagline })
+			});
+
 			return { success: true, draftSaved: true };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to save draft.';
@@ -104,6 +115,16 @@ export const actions: Actions = {
 		try {
 			const merged = await buildMergedSettings(site.id, validation.siteName, validation.tagline);
 			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'settings',
+				details: JSON.stringify({ siteName: validation.siteName, tagline: validation.tagline })
+			});
+
 			return { success: true, published: true };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to publish settings.';

@@ -218,6 +218,30 @@ export const events = pgTable(
 	]
 );
 
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+export const auditLog = pgTable(
+	'audit_log',
+	{
+		id: text('id').primaryKey(), // UUID
+		siteId: text('site_id')
+			.notNull()
+			.references(() => sites.id, { onDelete: 'cascade' }),
+		userId: text('user_id').notNull(), // Discord user ID (not a DB FK since users are external)
+		userEmail: text('user_email'), // optional, for display
+		action: text('action').notNull(), // 'create' | 'update' | 'delete'
+		entityType: text('entity_type').notNull(), // 'event' | 'asset' | 'link' | 'branding' | 'homepage' | 'settings' | 'team'
+		entityId: text('entity_id'), // optional, ID of the affected entity
+		details: text('details'), // optional JSON string with change details
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		index('audit_log_site_id_idx').on(table.siteId),
+		index('audit_log_entity_type_idx').on(table.entityType),
+		index('audit_log_created_at_idx').on(table.createdAt)
+	]
+);
+
 // ─── Type Exports ────────────────────────────────────────────────────────────
 
 export type Site = typeof sites.$inferSelect;
@@ -243,3 +267,6 @@ export type NewSocialLink = typeof socialLinks.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+export type AuditLog = typeof auditLog.$inferSelect;
+export type NewAuditLog = typeof auditLog.$inferInsert;

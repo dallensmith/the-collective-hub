@@ -4,6 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { getCdnUrl, deleteFromCdn } from '$lib/server/cdn';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load all assets for the current site, newest first.
@@ -79,6 +80,16 @@ export const actions: Actions = {
 
 		// Delete from database
 		await db.delete(assets).where(eq(assets.id, assetId));
+
+		logAuditEvent({
+			siteId: site.id,
+			userId: event.locals.user?.discordId ?? 'unknown',
+			userEmail: event.locals.user?.email,
+			action: 'delete',
+			entityType: 'asset',
+			entityId: assetId,
+			details: JSON.stringify({ filename: record.filename, cdnKey: record.cdnKey })
+		});
 
 		return { success: true };
 	}

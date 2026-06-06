@@ -102,6 +102,7 @@
 		...(flag('events') ? [{ label: 'Events', href: '/admin/events', placeholder: false }] : []),
 		...(flag('assetLibrary') ? [{ label: 'Assets', href: '/admin/assets', placeholder: false }] : []),
 		...(data.isSuperAdmin ? [{ label: 'Super Admin', href: '/admin/super', placeholder: false }] : []),
+		{ label: 'Audit Log', href: '/admin/audit-log', placeholder: false },
 		{ label: 'Team', href: '/admin/team', placeholder: false }
 	]);
 </script>

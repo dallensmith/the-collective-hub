@@ -3,6 +3,7 @@ import { events } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load all events for the current site, ordered by startTime descending (newest first).
@@ -81,19 +82,35 @@ export const actions: Actions = {
 		const finalEventType = validTypes.includes(eventType) ? eventType : 'screening';
 
 		try {
-			await db.insert(events).values({
-				siteId: site.id,
-				title,
-				description,
-				eventType: finalEventType,
-				startTime,
-				endTime,
-				timezone,
-				location,
-				externalLink,
-				imageCdnKey,
-				isPublished
-			});
+			const [created] = await db
+				.insert(events)
+				.values({
+					siteId: site.id,
+					title,
+					description,
+					eventType: finalEventType,
+					startTime,
+					endTime,
+					timezone,
+					location,
+					externalLink,
+					imageCdnKey,
+					isPublished
+				})
+				.returning({ id: events.id });
+
+			if (created) {
+				logAuditEvent({
+					siteId: site.id,
+					userId: event.locals.user?.discordId ?? 'unknown',
+					userEmail: event.locals.user?.email,
+					action: 'create',
+					entityType: 'event',
+					entityId: created.id,
+					details: JSON.stringify({ title, eventType: finalEventType })
+				});
+			}
+
 			return { success: true, action: 'create' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to create event.';
@@ -174,6 +191,17 @@ export const actions: Actions = {
 					updatedAt: new Date()
 				})
 				.where(eq(events.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'event',
+				entityId: id,
+				details: JSON.stringify({ title, eventType: finalEventType })
+			});
+
 			return { success: true, action: 'update' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update event.';
@@ -208,6 +236,16 @@ export const actions: Actions = {
 
 		try {
 			await db.delete(events).where(eq(events.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'delete',
+				entityType: 'event',
+				entityId: id
+			});
+
 			return { success: true, action: 'delete' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to delete event.';
@@ -245,6 +283,17 @@ export const actions: Actions = {
 				.update(events)
 				.set({ isPublished: !existing.isPublished, updatedAt: new Date() })
 				.where(eq(events.id, id));
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'event',
+				entityId: id,
+				details: JSON.stringify({ isPublished: !existing.isPublished })
+			});
+
 			return { success: true, action: 'togglePublish' };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to toggle publish status.';

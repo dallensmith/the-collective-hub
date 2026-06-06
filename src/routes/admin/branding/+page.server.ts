@@ -6,6 +6,7 @@ import { error, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { SiteSettingsData } from '$lib/shared/types';
 import { saveDraft, publishDrafts, discardDrafts } from '$lib/server/settings-writer';
+import { logAuditEvent } from '$lib/server/audit-log';
 
 /**
  * Load current branding and theme settings, plus the asset library for
@@ -132,6 +133,16 @@ export const actions: Actions = {
 			const formData = await event.request.formData();
 			const merged = await buildMergedBrandingSettings(site.id, site.name, formData);
 			await saveDraft(site.id, merged as Partial<SiteSettingsData>);
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'branding',
+				details: 'Saved branding draft'
+			});
+
 			return { success: true, draftSaved: true };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to save draft.';
@@ -148,6 +159,16 @@ export const actions: Actions = {
 			const formData = await event.request.formData();
 			const merged = await buildMergedBrandingSettings(site.id, site.name, formData);
 			await publishDrafts(site.id, merged as Partial<SiteSettingsData>);
+
+			logAuditEvent({
+				siteId: site.id,
+				userId: event.locals.user?.discordId ?? 'unknown',
+				userEmail: event.locals.user?.email,
+				action: 'update',
+				entityType: 'branding',
+				details: 'Published branding changes'
+			});
+
 			return { success: true, published: true };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to publish branding.';
