@@ -5,7 +5,12 @@ import type { User, Session } from 'better-auth';
 declare global {
 	namespace App {
 		interface Locals {
-			user?: User;
+			user?: User & {
+				discordId?: string;
+				discordUsername?: string;
+				discordAvatar?: string;
+				role?: string;
+			};
 			session?: Session;
 		}
 

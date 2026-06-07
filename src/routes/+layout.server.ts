@@ -1,4 +1,3 @@
-import { redirect } from '@sveltejs/kit';
 import { OWNER_DISCORD_ID, SUPERADMIN_DISCORD_IDS } from '$env/static/private';
 import type { LayoutServerLoad } from './$types';
 
@@ -7,7 +6,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const session = locals.session;
 
 	if (!session || !user) {
-		redirect(303, '/login');
+		return { isAuthorized: false };
 	}
 
 	const superAdminIds = SUPERADMIN_DISCORD_IDS.split(',').map((id) => id.trim());
@@ -16,11 +15,5 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		discordId === OWNER_DISCORD_ID ||
 		superAdminIds.includes(discordId);
 
-	if (!isAuthorized) {
-		redirect(303, '/');
-	}
-
-	return {
-		user
-	};
+	return { isAuthorized };
 };
