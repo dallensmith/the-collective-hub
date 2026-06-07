@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
 	if (event.locals.user) {
-		redirect(303, '/admin');
+		redirect(303, '/');
 	}
 
 	return {};

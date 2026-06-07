@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 
+	let isAuthenticated = $derived($page.data.isAuthenticated as boolean);
+	let isAuthorized = $derived($page.data.isAuthorized as boolean);
 	let settings = $derived($page.data.settings);
 </script>
 
@@ -15,12 +17,23 @@
 		{settings?.heroSubtitle ?? 'A space to share, discover, and celebrate the films and shows that bring us together.'}
 	</p>
 	<div class="flex flex-col gap-4 sm:flex-row">
-		<a
-			href="/login"
-			class="rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
-		>
-			{settings?.heroCtaText ?? 'Get Started'}
-		</a>
+		{#if isAuthenticated}
+			{#if isAuthorized}
+				<a
+					href="/admin"
+					class="rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
+				>
+					Dashboard
+				</a>
+			{/if}
+		{:else}
+			<a
+				href="/login"
+				class="rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
+			>
+				{settings?.heroCtaText ?? 'Get Started'}
+			</a>
+		{/if}
 		<a
 			href="#content"
 			class="rounded-lg border border-gray-400 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
@@ -57,11 +70,13 @@
 		<p class="mb-8 text-lg text-gray-300">
 			{settings?.ctaText ?? 'Set up your community hub in minutes.'}
 		</p>
-		<a
-			href="/login"
-			class="inline-block rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
-		>
-			{settings?.ctaButtonText ?? 'Login with Discord'}
-		</a>
+		{#if !isAuthenticated}
+			<a
+				href="/login"
+				class="inline-block rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
+			>
+				{settings?.ctaButtonText ?? 'Login with Discord'}
+			</a>
+		{/if}
 	</div>
 </section>

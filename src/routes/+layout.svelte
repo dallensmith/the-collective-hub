@@ -7,6 +7,7 @@
 
 	let { children } = $props();
 
+	let isAuthenticated = $derived($page.data.isAuthenticated as boolean);
 	let isAuthorized = $derived($page.data.isAuthorized as boolean);
 	let settings = $derived($page.data.settings);
 	let siteName = $derived(settings?.siteName ?? 'My Community Hub');
@@ -26,10 +27,12 @@
 >
 	<a href="/" class="text-lg font-bold tracking-tight">{siteName}</a>
 	<div class="flex items-center gap-4">
-		{#if isAuthorized}
-			<a href="/admin" class="text-sm font-medium text-gray-600 transition hover:text-gray-900">
-				Admin
-			</a>
+		{#if isAuthenticated}
+			{#if isAuthorized}
+				<a href="/admin" class="text-sm font-medium text-gray-600 transition hover:text-gray-900">
+					Admin
+				</a>
+			{/if}
 			<button
 				onclick={handleLogout}
 				class="cursor-pointer text-sm font-medium text-gray-600 transition hover:text-gray-900"
