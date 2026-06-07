@@ -12,7 +12,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const isAuthenticated = !!(session && user);
 
 	if (!isAuthenticated) {
-		return { isAuthenticated, isAuthorized: false, settings: await settings };
+		return { isAuthenticated, isAuthorized: false, user: null, settings: await settings };
 	}
 
 	const superAdminIds = SUPERADMIN_DISCORD_IDS.split(',').map((id) => id.trim());
@@ -21,5 +21,5 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		discordId === OWNER_DISCORD_ID ||
 		superAdminIds.includes(discordId);
 
-	return { isAuthenticated, isAuthorized, settings: await settings };
+	return { isAuthenticated, isAuthorized, user, settings: await settings };
 };

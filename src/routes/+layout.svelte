@@ -10,6 +10,7 @@
 	let isAuthenticated = $derived($page.data.isAuthenticated as boolean);
 	let isAuthorized = $derived($page.data.isAuthorized as boolean);
 	let settings = $derived($page.data.settings);
+	let user = $derived($page.data.user);
 	let siteName = $derived(settings?.siteName ?? 'My Community Hub');
 	let footerText = $derived(settings?.footerText ?? '© 2026 My Community Hub. All rights reserved.');
 
@@ -28,6 +29,16 @@
 	<a href="/" class="text-lg font-bold tracking-tight">{siteName}</a>
 	<div class="flex items-center gap-4">
 		{#if isAuthenticated}
+			<div class="flex items-center gap-3">
+				{#if user?.image}
+					<img
+						src={user.image}
+						alt={user.name || 'Avatar'}
+						class="w-8 h-8 rounded-full"
+					/>
+				{/if}
+				<span class="text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
+			</div>
 			{#if isAuthorized}
 				<a href="/admin" class="text-sm font-medium text-gray-600 transition hover:text-gray-900">
 					Admin
