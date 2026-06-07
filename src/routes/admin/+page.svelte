@@ -23,6 +23,13 @@
 			<h2 class="mb-2 text-lg font-semibold">Site Settings</h2>
 			<p class="text-sm text-gray-500">Manage landing page content and site configuration</p>
 		</a>
+		<a
+			href="/admin/theme"
+			class="block rounded-xl border-2 border-gray-200 p-6 transition hover:border-gray-400 hover:shadow-sm"
+		>
+			<h2 class="mb-2 text-lg font-semibold">Theme</h2>
+			<p class="text-sm text-gray-500">Choose and customize your site color scheme</p>
+		</a>
 		<div class="rounded-xl border-2 border-dashed border-gray-300 p-6">
 			<h2 class="mb-2 text-lg font-semibold">Events</h2>
 			<p class="text-sm text-gray-500">Coming soon</p>

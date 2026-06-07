@@ -1,5 +1,5 @@
 import { OWNER_DISCORD_ID, SUPERADMIN_DISCORD_IDS } from '$env/static/private';
-import { getSettings } from '$lib/server/settings';
+import { getSettings, getThemePreset } from '$lib/server/settings';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -12,7 +12,9 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const isAuthenticated = !!(session && user);
 
 	if (!isAuthenticated) {
-		return { isAuthenticated, isAuthorized: false, user: null, settings: await settings };
+		const resolvedSettings = await settings;
+		const theme = getThemePreset(resolvedSettings.themePreset);
+		return { isAuthenticated, isAuthorized: false, user: null, settings: resolvedSettings, theme };
 	}
 
 	const superAdminIds = SUPERADMIN_DISCORD_IDS.split(',').map((id) => id.trim());
@@ -21,5 +23,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		discordId === OWNER_DISCORD_ID ||
 		superAdminIds.includes(discordId);
 
-	return { isAuthenticated, isAuthorized, user, settings: await settings };
+	const resolvedSettings = await settings;
+	const theme = getThemePreset(resolvedSettings.themePreset);
+	return { isAuthenticated, isAuthorized, user, settings: resolvedSettings, theme };
 };

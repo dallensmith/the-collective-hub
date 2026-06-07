@@ -104,12 +104,56 @@
 				/>
 				<p class="mt-1 text-xs text-gray-500">Button links to the login page</p>
 			</div>
+			<div>
+				<label for="heroSecondaryCtaText" class="mb-1 block text-sm font-medium text-gray-700">
+					Secondary Button Text
+				</label>
+				<input
+					id="heroSecondaryCtaText"
+					name="heroSecondaryCtaText"
+					type="text"
+					value={$page.data.settings?.heroSecondaryCtaText ?? ''}
+					class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+				/>
+				<p class="mt-1 text-xs text-gray-500">The "Learn More" button that scrolls to features</p>
+			</div>
 		</div>
 	</fieldset>
 
-	<!-- 3. Features -->
+	<!-- 3. Features Section -->
 	<fieldset class="rounded-lg border border-gray-200 p-4">
-		<legend class="px-2 text-sm font-semibold text-gray-700">Features</legend>
+		<legend class="px-2 text-sm font-semibold text-gray-700">Features Section</legend>
+		<div class="space-y-4">
+			<div>
+				<label for="contentHeading" class="mb-1 block text-sm font-medium text-gray-700">
+					Section Heading
+				</label>
+				<input
+					id="contentHeading"
+					name="contentHeading"
+					type="text"
+					value={$page.data.settings?.contentHeading ?? ''}
+					class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+				/>
+			</div>
+			<div>
+				<label for="contentSubtitle" class="mb-1 block text-sm font-medium text-gray-700">
+					Section Subtitle
+				</label>
+				<input
+					id="contentSubtitle"
+					name="contentSubtitle"
+					type="text"
+					value={$page.data.settings?.contentSubtitle ?? ''}
+					class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+				/>
+			</div>
+		</div>
+	</fieldset>
+
+	<!-- 4. Feature Cards -->
+	<fieldset class="rounded-lg border border-gray-200 p-4">
+		<legend class="px-2 text-sm font-semibold text-gray-700">Feature Cards</legend>
 		<div class="space-y-4">
 			{#each features as feature, i}
 				<div class="rounded-lg border border-gray-100 bg-gray-50 p-4">
@@ -180,7 +224,7 @@
 		</div>
 	</fieldset>
 
-	<!-- 4. Call-to-Action Section -->
+	<!-- 6. Call-to-Action Section -->
 	<fieldset class="rounded-lg border border-gray-200 p-4">
 		<legend class="px-2 text-sm font-semibold text-gray-700">Call-to-Action Section</legend>
 		<div class="space-y-4">
@@ -224,7 +268,7 @@
 		</div>
 	</fieldset>
 
-	<!-- 5. Footer -->
+	<!-- 7. Footer -->
 	<fieldset class="rounded-lg border border-gray-200 p-4">
 		<legend class="px-2 text-sm font-semibold text-gray-700">Footer</legend>
 		<div>
