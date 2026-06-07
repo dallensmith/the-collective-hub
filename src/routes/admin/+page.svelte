@@ -16,10 +16,13 @@
 	<p class="mb-8 text-gray-600">Admin Dashboard</p>
 
 	<div class="grid gap-6 md:grid-cols-2">
-		<div class="rounded-xl border-2 border-dashed border-gray-300 p-6">
+		<a
+			href="/admin/settings"
+			class="block rounded-xl border-2 border-gray-200 p-6 transition hover:border-gray-400 hover:shadow-sm"
+		>
 			<h2 class="mb-2 text-lg font-semibold">Site Settings</h2>
-			<p class="text-sm text-gray-500">Coming soon</p>
-		</div>
+			<p class="text-sm text-gray-500">Manage landing page content and site configuration</p>
+		</a>
 		<div class="rounded-xl border-2 border-dashed border-gray-300 p-6">
 			<h2 class="mb-2 text-lg font-semibold">Events</h2>
 			<p class="text-sm text-gray-500">Coming soon</p>
