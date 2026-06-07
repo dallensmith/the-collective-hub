@@ -1,1 +1,0 @@
-ALTER TABLE "audit_log" ALTER COLUMN "site_id" SET DATA TYPE uuid;
