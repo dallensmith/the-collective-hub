@@ -25,6 +25,7 @@ export type SiteSettings = {
 	ctaButtonText: string;
 	footerText: string;
 	themePreset: string;
+	themeMode: string;
 };
 
 // --- Defaults (template/dummy data for first-time setup) ---
@@ -59,7 +60,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 	ctaText: 'Set up your community hub in minutes.',
 	ctaButtonText: 'Login with Discord',
 	footerText: '© 2026 My Community Hub. All rights reserved.',
-	themePreset: 'default-dark'
+	themePreset: 'default-dark',
+	themeMode: 'light'
 };
 
 // --- Keys used in the siteSettings table ---
@@ -76,7 +78,8 @@ const KEYS = {
 	CTA_TEXT: 'ctaText',
 	CTA_BUTTON_TEXT: 'ctaButtonText',
 	FOOTER_TEXT: 'footerText',
-	THEME_PRESET: 'themePreset'
+	THEME_PRESET: 'themePreset',
+	THEME_MODE: 'themeMode'
 } as const;
 
 // --- Functions ---
@@ -102,7 +105,8 @@ export async function getSettings(): Promise<SiteSettings> {
 		ctaText: (map.get(KEYS.CTA_TEXT) as string) ?? DEFAULT_SETTINGS.ctaText,
 		ctaButtonText: (map.get(KEYS.CTA_BUTTON_TEXT) as string) ?? DEFAULT_SETTINGS.ctaButtonText,
 		footerText: (map.get(KEYS.FOOTER_TEXT) as string) ?? DEFAULT_SETTINGS.footerText,
-		themePreset: (map.get(KEYS.THEME_PRESET) as string) ?? DEFAULT_SETTINGS.themePreset
+		themePreset: (map.get(KEYS.THEME_PRESET) as string) ?? DEFAULT_SETTINGS.themePreset,
+		themeMode: (map.get(KEYS.THEME_MODE) as string) ?? DEFAULT_SETTINGS.themeMode
 	};
 
 	return settings;

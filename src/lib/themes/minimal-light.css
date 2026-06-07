@@ -16,3 +16,20 @@
 	--theme-cta-text: #1e293b;
 	--theme-border: #e2e8f0;
 }
+
+.dark {
+	--theme-bg: #0f172a;
+	--theme-surface: #1e293b;
+	--theme-text: #f1f5f9;
+	--theme-text-secondary: #94a3b8;
+	--theme-header-bg: #0f172acc;
+	--theme-header-text: #f1f5f9;
+	--theme-footer-bg: #020617;
+	--theme-footer-text: #94a3b8;
+	--theme-hero-bg: #1e293b;
+	--theme-hero-bg-end: #0f172a;
+	--theme-hero-text: #f1f5f9;
+	--theme-cta-bg: #1e293b;
+	--theme-cta-text: #f1f5f9;
+	--theme-border: #334155;
+}

@@ -16,3 +16,15 @@
 	--theme-cta-text: #f0fdf4;
 	--theme-border: #bbf7d0;
 }
+
+.dark {
+	--theme-bg: #052e16;
+	--theme-surface: #14532d;
+	--theme-text: #f0fdf4;
+	--theme-text-secondary: #86efac;
+	--theme-header-bg: #052e16cc;
+	--theme-header-text: #f0fdf4;
+	--theme-footer-bg: #022c22;
+	--theme-footer-text: #86efac;
+	--theme-border: #166534;
+}

@@ -14,15 +14,28 @@
 	let user = $derived($page.data.user);
 	let siteName = $derived(settings?.siteName ?? 'My Community Hub');
 	let footerText = $derived(settings?.footerText ?? '© 2026 My Community Hub. All rights reserved.');
+	let themeMode = $derived(settings?.themeMode ?? 'light');
 
-	// Build CSS variable string from active theme colors — overrides baseline default-dark.css
+	// Build CSS variable string from active theme colors — includes both light and dark mode
 	let themeCss = $derived(
 		theme
-			? `:root { ${Object.entries(theme.colors)
+			? `:root { ${Object.entries(theme.colors.light)
 					.map(([key, val]) => `--theme-${key}: ${val};`)
-					.join(' ')} }`
+					.join(' ')} }
+.dark { ${Object.entries(theme.colors.dark)
+	.map(([key, val]) => `--theme-${key}: ${val};`)
+	.join(' ')} }`
 			: ''
 	);
+
+	// Apply .dark class to <html> when themeMode is 'dark'
+	$effect(() => {
+		if (themeMode === 'dark') {
+			document.documentElement.classList.add('dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+		}
+	});
 
 	async function handleLogout() {
 		await authClient.signOut();
