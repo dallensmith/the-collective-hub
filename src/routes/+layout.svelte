@@ -14,7 +14,15 @@
 	let user = $derived($page.data.user);
 	let siteName = $derived(settings?.siteName ?? 'My Community Hub');
 	let footerText = $derived(settings?.footerText ?? '© 2026 My Community Hub. All rights reserved.');
-	let themeColors = $derived(theme?.colors ?? null);
+
+	// Build CSS variable string from active theme colors — overrides baseline default-dark.css
+	let themeCss = $derived(
+		theme
+			? `:root { ${Object.entries(theme.colors)
+					.map(([key, val]) => `--theme-${key}: ${val};`)
+					.join(' ')} }`
+			: ''
+	);
 
 	async function handleLogout() {
 		await authClient.signOut();
@@ -24,36 +32,16 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	{#if themeColors}
-		<style>
-			:root {
-				--color-primary: {themeColors.primary};
-				--color-primary-hover: {themeColors['primary-hover']};
-				--color-bg: {themeColors.bg};
-				--color-surface: {themeColors.surface};
-				--color-text: {themeColors.text};
-				--color-text-secondary: {themeColors['text-secondary']};
-				--color-header-bg: {themeColors['header-bg']};
-				--color-header-text: {themeColors['header-text']};
-				--color-footer-bg: {themeColors['footer-bg']};
-				--color-footer-text: {themeColors['footer-text']};
-				--color-hero-bg: {themeColors['hero-bg']};
-				--color-hero-bg-end: {themeColors['hero-bg-end']};
-				--color-hero-text: {themeColors['hero-text']};
-				--color-cta-bg: {themeColors['cta-bg']};
-				--color-cta-text: {themeColors['cta-text']};
-				--color-border: {themeColors.border};
-			}
-		</style>
+	{#if themeCss}
+		<style>{themeCss}</style>
 	{/if}
 </svelte:head>
 
 <!-- Header / Nav -->
 <nav
-	class="sticky top-0 z-50 flex items-center justify-between border-b px-6 py-3 backdrop-blur-md"
-	style="background: var(--color-header-bg); border-color: var(--color-border); color: var(--color-header-text)"
+	class="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-header-bg px-6 py-3 text-header-text backdrop-blur-md"
 >
-	<a href="/" class="text-lg font-bold tracking-tight" style="color: var(--color-header-text)">{siteName}</a>
+	<a href="/" class="text-lg font-bold tracking-tight">{siteName}</a>
 	<div class="flex items-center gap-4">
 		{#if isAuthenticated}
 			<div class="flex items-center gap-3">
@@ -64,21 +52,21 @@
 						class="h-8 w-8 rounded-full"
 					/>
 				{/if}
-				<span class="text-sm font-medium" style="color: var(--color-header-text)">{user?.name || 'User'}</span>
+				<span class="text-sm font-medium">{user?.name || 'User'}</span>
 			</div>
 			{#if isAuthorized}
-				<a href="/admin" class="text-sm font-medium transition" style="color: var(--color-header-text)">
+				<a href="/admin" class="text-sm font-medium transition">
 					Admin
 				</a>
 			{/if}
 			<button
 				onclick={handleLogout}
-				class="cursor-pointer text-sm font-medium transition" style="color: var(--color-header-text)"
+				class="cursor-pointer text-sm font-medium transition"
 			>
 				Logout
 			</button>
 		{:else}
-			<a href="/login" class="text-sm font-medium transition" style="color: var(--color-header-text)">
+			<a href="/login" class="text-sm font-medium transition">
 				Login
 			</a>
 		{/if}
@@ -91,12 +79,12 @@
 </main>
 
 <!-- Footer -->
-<footer style="background: var(--color-footer-bg); border-color: var(--color-border)">
-	<div class="mx-auto flex max-w-5xl flex-col items-center gap-2 px-6 py-8 text-center text-sm sm:flex-row sm:justify-between" style="color: var(--color-footer-text)">
-		<span class="font-medium" style="color: var(--color-footer-text)">{siteName}</span>
+<footer class="bg-footer-bg text-footer-text">
+	<div class="mx-auto flex max-w-5xl flex-col items-center gap-2 px-6 py-8 text-center text-sm sm:flex-row sm:justify-between">
+		<span class="font-medium">{siteName}</span>
 		<span>Built with SvelteKit + Better Auth</span>
 	</div>
-	<div class="border-t px-6 py-3 text-center text-xs" style="border-color: var(--color-border); color: var(--color-footer-text)">
+	<div class="border-t border-border px-6 py-3 text-center text-xs">
 		{footerText}
 	</div>
 </footer>

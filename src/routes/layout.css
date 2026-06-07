@@ -1,3 +1,25 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+@theme {
+	--color-primary: var(--theme-primary, #3b82f6);
+	--color-primary-hover: var(--theme-primary-hover, #2563eb);
+	--color-surface: var(--theme-surface, #f9fafb);
+	--color-bg: var(--theme-bg, #ffffff);
+	--color-text: var(--theme-text, #111827);
+	--color-text-secondary: var(--theme-text-secondary, #6b7280);
+	--color-header-bg: var(--theme-header-bg, #ffffffcc);
+	--color-header-text: var(--theme-header-text, #111827);
+	--color-footer-bg: var(--theme-footer-bg, #111827);
+	--color-footer-text: var(--theme-footer-text, #f9fafb);
+	--color-hero-bg: var(--theme-hero-bg, #111827);
+	--color-hero-bg-end: var(--theme-hero-bg-end, #1f2937);
+	--color-hero-text: var(--theme-hero-text, #ffffff);
+	--color-cta-bg: var(--theme-cta-bg, #111827);
+	--color-cta-text: var(--theme-cta-text, #ffffff);
+	--color-border: var(--theme-border, #e5e7eb);
+}
+
+/* Baseline theme — overridden at runtime by selected theme's CSS variables */
+@import '../lib/themes/default-dark.css';

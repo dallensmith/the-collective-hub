@@ -1,0 +1,18 @@
+:root {
+	--theme-primary: #0ea5e9;
+	--theme-primary-hover: #0284c7;
+	--theme-bg: #f0f9ff;
+	--theme-surface: #ffffff;
+	--theme-text: #0c4a6e;
+	--theme-text-secondary: #64748b;
+	--theme-header-bg: #f0f9ffcc;
+	--theme-header-text: #0c4a6e;
+	--theme-footer-bg: #0c4a6e;
+	--theme-footer-text: #e0f2fe;
+	--theme-hero-bg: #0c4a6e;
+	--theme-hero-bg-end: #1e3a5f;
+	--theme-hero-text: #f0f9ff;
+	--theme-cta-bg: #0c4a6e;
+	--theme-cta-text: #f0f9ff;
+	--theme-border: #bae6fd;
+}
