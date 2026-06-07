@@ -4,24 +4,77 @@
 	let isAuthorized = $derived($page.data.isAuthorized as boolean);
 </script>
 
-<section class="mx-auto flex min-h-[80vh] max-w-2xl flex-col items-center justify-center px-4 text-center">
-	<h1 class="mb-4 text-5xl font-bold tracking-tight">The Collective Hub</h1>
-	<p class="mb-8 text-lg text-gray-600">Your community hub for screenings and events</p>
-	<div class="flex gap-4">
-		{#if isAuthorized}
-			<a
-				href="/admin"
-				class="rounded-lg bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800"
-			>
-				Dashboard
-			</a>
-		{:else}
-			<a
-				href="/login"
-				class="rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium hover:bg-gray-50"
-			>
-				Login
-			</a>
-		{/if}
+<!-- Hero -->
+<section
+	class="flex min-h-[80vh] flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4 text-center text-white"
+>
+	<h1 class="mb-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+		Your Community Hub for Screenings & Events
+	</h1>
+	<p class="mb-10 max-w-xl text-lg text-gray-300 sm:text-xl">
+		A space to share, discover, and celebrate the films and shows that bring us together.
+	</p>
+	<div class="flex flex-col gap-4 sm:flex-row">
+		<a
+			href="/login"
+			class="rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
+		>
+			Get Started
+		</a>
+		<a
+			href="#content"
+			class="rounded-lg border border-gray-400 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+		>
+			Learn More
+		</a>
+	</div>
+</section>
+
+<!-- Content / Features -->
+<section id="content" class="bg-white px-4 py-20 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-5xl">
+		<h2 class="mb-12 text-center text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+			Everything you need to build community
+		</h2>
+		<div class="grid gap-8 md:grid-cols-3">
+			<!-- Card 1 -->
+			<div class="rounded-xl border border-gray-200 p-6 text-center shadow-sm transition hover:shadow-md">
+				<div class="mb-4 text-4xl">🎬</div>
+				<h3 class="mb-2 text-xl font-semibold text-gray-900">Screenings</h3>
+				<p class="text-gray-600">
+					Schedule and manage film screenings and watch parties with ease.
+				</p>
+			</div>
+			<!-- Card 2 -->
+			<div class="rounded-xl border border-gray-200 p-6 text-center shadow-sm transition hover:shadow-md">
+				<div class="mb-4 text-4xl">👥</div>
+				<h3 class="mb-2 text-xl font-semibold text-gray-900">Community</h3>
+				<p class="text-gray-600">
+					Bring people together around shared interests and memorable experiences.
+				</p>
+			</div>
+			<!-- Card 3 -->
+			<div class="rounded-xl border border-gray-200 p-6 text-center shadow-sm transition hover:shadow-md">
+				<div class="mb-4 text-4xl">⚙️</div>
+				<h3 class="mb-2 text-xl font-semibold text-gray-900">Easy Management</h3>
+				<p class="text-gray-600">
+					Simple admin tools to keep everything running smoothly.
+				</p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- CTA -->
+<section class="bg-gray-900 px-4 py-20 text-center text-white sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-2xl">
+		<h2 class="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">Ready to get started?</h2>
+		<p class="mb-8 text-lg text-gray-300">Set up your community hub in minutes.</p>
+		<a
+			href="/login"
+			class="inline-block rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
+		>
+			Login with Discord
+		</a>
 	</div>
 </section>
