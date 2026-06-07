@@ -7,6 +7,10 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  discordId: text("discord_id").unique(),
+  discordUsername: text("discord_username"),
+  discordAvatar: text("discord_avatar"),
+  role: text("role").default("admin").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
