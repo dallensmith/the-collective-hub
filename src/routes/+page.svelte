@@ -16,7 +16,7 @@
 	</p>
 	<div class="flex flex-col gap-4 sm:flex-row">
 		<a
-			href={settings?.heroCtaLink ?? '/login'}
+			href="/login"
 			class="rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
 		>
 			{settings?.heroCtaText ?? 'Get Started'}
@@ -58,7 +58,7 @@
 			{settings?.ctaText ?? 'Set up your community hub in minutes.'}
 		</p>
 		<a
-			href={settings?.ctaButtonLink ?? '/login'}
+			href="/login"
 			class="inline-block rounded-lg bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow transition hover:bg-gray-100"
 		>
 			{settings?.ctaButtonText ?? 'Login with Discord'}

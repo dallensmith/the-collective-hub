@@ -16,21 +16,19 @@ export const actions: Actions = {
 			heroHeading: formData.get('heroHeading') as string,
 			heroSubtitle: formData.get('heroSubtitle') as string,
 			heroCtaText: formData.get('heroCtaText') as string,
-			heroCtaLink: formData.get('heroCtaLink') as string,
 			ctaHeading: formData.get('ctaHeading') as string,
 			ctaText: formData.get('ctaText') as string,
 			ctaButtonText: formData.get('ctaButtonText') as string,
-			ctaButtonLink: formData.get('ctaButtonLink') as string,
 			footerText: formData.get('footerText') as string
 		};
 
-		// Handle features as JSON string from textarea
+		// Parse features from JSON hidden field (built by the client)
 		const featuresRaw = formData.get('contentFeatures') as string;
 		if (featuresRaw) {
 			try {
 				settings.contentFeatures = JSON.parse(featuresRaw);
 			} catch {
-				return fail(400, { error: 'Invalid JSON for features' });
+				return fail(400, { error: 'Invalid feature data. Please try again.' });
 			}
 		}
 
